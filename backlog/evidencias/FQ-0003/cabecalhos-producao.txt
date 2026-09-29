@@ -1,0 +1,17 @@
+$ curl -sI https://fragiq.buildlabs.com.br/  (2026-09-29 06:21 UTC)
+HTTP/1.1 200 Connection Established
+HTTP/2 200 
+server: cloudflare
+strict-transport-security: max-age=63072000
+x-powered-by: Next.js
+
+Ausentes: Content-Security-Policy, X-Frame-Options (ou frame-ancestors), X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+
+$ cat next.config.ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
