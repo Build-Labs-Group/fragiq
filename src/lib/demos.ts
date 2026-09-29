@@ -6,7 +6,7 @@ import { metricasDaDemo, REGRAS_VERSAO, type Metricas } from "./demo/metricas";
 import { conversaoDaDemo } from "./demo/conversao";
 import { ritmoDaDemo, type RitmoDeTime } from "./demo/ritmo";
 import { economiaDaDemo, porCompraDaDemo, type EconomiaDeTime, type PorCompra } from "./demo/economia";
-import { lerLinhaDoTempo, linhaDoTempo, type LinhaDoTempo } from "./demo/linha-do-tempo";
+import { LINHA_DO_TEMPO_VERSAO, lerLinhaDoTempo, linhaDoTempo, type LinhaDoTempo } from "./demo/linha-do-tempo";
 
 /**
  * Demos: a fila para o bot e o que fazer com o que ele traz.
@@ -199,10 +199,13 @@ async function preencherLinhaDoTempo(matchId: string): Promise<LinhaDoTempo | nu
   try {
     const d = await prisma.matchDemo.findUnique({ where: { matchId }, select: { dados: true } });
     const parsed = demoPayload.safeParse(d?.dados);
-    if (!parsed.success) return null;
-    const linha = linhaDoTempo(parsed.data);
-    await prisma.matchDemo.update({ where: { matchId }, data: { linhaDoTempo: linha as unknown as Prisma.InputJsonValue } });
-    return linha;
+    // Payload ilegível vira uma linha vazia gravada: a próxima visita não
+    // relê centenas de KB para chegar ao mesmo nada.
+    const linha: LinhaDoTempo = parsed.success ? linhaDoTempo(parsed.data) : { versao: LINHA_DO_TEMPO_VERSAO, times: [], rounds: [] };
+    // Só escreve se ainda estiver vazia: se o bot regravou a demo no meio
+    // do caminho, a linha dele (do payload novo) é a que fica.
+    await prisma.matchDemo.updateMany({ where: { matchId, linhaDoTempo: { equals: Prisma.DbNull } }, data: { linhaDoTempo: linha as unknown as Prisma.InputJsonValue } });
+    return linha.rounds.length ? linha : null;
   } catch (e) {
     console.error("[demos] linha do tempo não montou:", e instanceof Error ? e.message : e);
     return null;

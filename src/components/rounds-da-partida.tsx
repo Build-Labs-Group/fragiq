@@ -73,7 +73,9 @@ export function RoundsDaPartida({
     linha.times.map((t, i) => ({ ...t, i })),
     escalacoes,
   );
-  const demoDe = casados.map((c, i) => c?.i ?? i) as [number, number];
+  // Um lado só casou (escalação incompleta): o outro é o time que sobrou, nunca o mesmo.
+  const a = casados[0]?.i ?? (casados[1] ? 1 - casados[1].i : 0);
+  const demoDe: [number, number] = [a, 1 - a];
   const rounds = linha.rounds;
 
   const ladoDoTime = (r: RoundNaLinha, timeDoPlacar: number): Lado => {

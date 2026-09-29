@@ -42,9 +42,20 @@ export function Atividade({ sessoes, lente, agora }: { sessoes: Sessao[]; lente:
   const chave = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: tz });
 
   const fim = agora.getTime();
-  const naJanela = (s: Sessao, de: number, ate: number) => s.ate.getTime() > de && s.ate.getTime() <= ate;
-  const atual = sessoes.filter((s) => naJanela(s, fim - JANELA * DIA_MS, fim));
-  const anterior = sessoes.filter((s) => naJanela(s, fim - 2 * JANELA * DIA_MS, fim - JANELA * DIA_MS));
+  // As janelas são de dias de calendário, as mesmas das barras: hoje e os
+  // 29 anteriores, contra os 30 antes deles. Comparar chaves "AAAA-MM-DD"
+  // como texto é comparar datas.
+  const dias = Array.from({ length: JANELA }, (_, i) => {
+    const d = new Date(fim - (JANELA - 1 - i) * DIA_MS);
+    return { chave: chave(d), data: d, doModo: 0, outros: 0, sessoes: 0 };
+  });
+  const inicio = dias[0].chave;
+  const inicioAnterior = chave(new Date(fim - (2 * JANELA - 1) * DIA_MS));
+  const atual = sessoes.filter((s) => chave(s.ate) >= inicio && s.ate.getTime() <= fim);
+  const anterior = sessoes.filter((s) => {
+    const k = chave(s.ate);
+    return k >= inicioAnterior && k < inicio;
+  });
   const a = totais(atual, chave);
   const b = totais(anterior, chave);
   // Sem nenhuma sessão nos dois meses, o bloco seria uma fileira de zeros.
@@ -59,10 +70,6 @@ export function Atividade({ sessoes, lente, agora }: { sessoes: Sessao[]; lente:
   ];
 
   // Um ponto por dia, com os dias vazios no eixo: pular os zeros mentiria sobre o ritmo.
-  const dias = Array.from({ length: JANELA }, (_, i) => {
-    const d = new Date(fim - (JANELA - 1 - i) * DIA_MS);
-    return { chave: chave(d), data: d, doModo: 0, outros: 0, sessoes: 0 };
-  });
   const porChave = new Map(dias.map((d) => [d.chave, d]));
   for (const s of atual) {
     const dia = porChave.get(chave(s.ate));

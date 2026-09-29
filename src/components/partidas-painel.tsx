@@ -106,7 +106,7 @@ export function PartidasPainel({ partidas }: { partidas: PartidaLinha[] }) {
                     p.eu.venceu === null && "bg-surface-2 text-ink-muted ring-line",
                   )}
                   style={{ "--i": i } as React.CSSProperties}
-                  title={`${p.mapa ? rotularMapa(p.mapa) : "Partida"} · ${p.placar[p.eu.time]}–${p.placar[1 - p.eu.time]} · ${formatarQuando(p.jogadaEm)}`}
+                  title={`${p.mapa ? rotularMapa(p.mapa) : "Partida"} · ${p.placar[0]}–${p.placar[1]} · ${formatarQuando(p.jogadaEm)}`}
                 >
                   {p.eu.venceu === true ? "V" : p.eu.venceu === false ? "D" : "E"}
                 </Link>
