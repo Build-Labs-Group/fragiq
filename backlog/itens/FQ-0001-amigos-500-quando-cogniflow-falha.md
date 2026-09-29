@@ -10,7 +10,7 @@ area: src/app/amigos, src/lib/social.ts
 criado_por: po
 criado_em: 2026-09-29
 atualizado_em: 2026-09-29
-commits: []
+commits: [ac6a792]
 relacionados: []
 ---
 
@@ -75,7 +75,7 @@ roda no CI nem no build da Vercel; roda local com o banco do seed.
   pessoa vê quem segue e quem a segue, e um aviso de que a lista da Steam não
   pôde ser lida agora. Qualquer outro erro inesperado mostra uma tela do FragIQ
   com "Tentar de novo", em vez da tela padrão do Next.
-- **Commits:** ver `commits` (branch `rotina/dev-2026-09-29`, sem push).
+- **Commits:** `ac6a792` (branch `rotina/dev-2026-09-29`, no `rotina-dev-2026-09-29.bundle` da pasta local; **sem push**, ver relatório do dia).
 - **Arquivos:** `src/lib/social.ts`, `src/app/amigos/page.tsx`,
   `src/app/error.tsx`, `playwright.config.ts`, `package.json`.
 - **Testes:** `tests/lib/amigos-leitura.test.ts` (falha vira `leituraFalhou` e
