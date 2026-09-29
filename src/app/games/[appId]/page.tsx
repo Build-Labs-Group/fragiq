@@ -17,7 +17,8 @@ import { filtroDoModo, rotuloDoModo, TUDO } from "@/lib/modo";
 import { abasDoUsuario, modoDaRequisicao, type SearchParams } from "@/lib/modo-servidor";
 import { insightsDaUltimaSessao, insightsDoModo } from "@/lib/insights/ler";
 import { Insight } from "@/components/insight";
-import { formatarQuando } from "@/lib/sessoes";
+import { formatarQuando, listarSessoes } from "@/lib/sessoes";
+import { Atividade } from "@/components/atividade";
 
 export const dynamic = "force-dynamic";
 
@@ -36,19 +37,27 @@ export default async function ResumoPage({ params, searchParams }: { params: Pro
   const session = await requireSession();
   const appId = Number((await params).appId);
 
-  const fonte = await carregarFonte(session.userId, appId);
+  // Tudo o que não depende do modo sai junto: antes eram quatro idas ao
+  // banco em fila (balde → abas → amizade → portas), cada uma esperando a
+  // anterior. `carregarFonte`, `abasDoUsuario` e `botEhAmigo` são
+  // memoizadas por requisição, então o layout não paga de novo.
+  const [fonte, abas, amigoDoBot, portas] = await Promise.all([
+    carregarFonte(session.userId, appId),
+    abasDoUsuario(session.userId, appId),
+    appId === 730 ? botEhAmigo(session.steamId) : Promise.resolve(true as boolean | null),
+    appId === 730
+      ? prisma.user.findUnique({ where: { id: session.userId }, select: { partidasAtivadasEm: true, partidasErro: true, botAmigoDesde: true } })
+      : Promise.resolve(null),
+  ]);
   if (!fonte) {
     if (appId !== 730) notFound();
-    return <SemDados botAmigo={await botEhAmigo(session.steamId)} />;
+    return <SemDados botAmigo={amigoDoBot} />;
   }
   const { rows } = fonte;
-  const modo = await modoDaRequisicao(searchParams, await abasDoUsuario(session.userId, appId));
+  const modo = await modoDaRequisicao(searchParams, abas);
   const lente = filtroDoModo(modo)?.mode ?? null;
 
   const sessao = ultimaSessao(rows, filtroDoModo(modo));
-  const amigoDoBot = appId === 730 ? await botEhAmigo(session.steamId) : true;
-  const portas =
-    appId === 730 ? await prisma.user.findUnique({ where: { id: session.userId }, select: { partidasAtivadasEm: true, partidasErro: true, botAmigoDesde: true } }) : null;
   // Ligada e andando: uma corrente que a Steam parou de aceitar não é um
   // passo feito, é um passo para refazer.
   const partidasParadas = appId === 730 && Boolean(portas?.partidasAtivadasEm && portas.partidasErro);
@@ -88,13 +97,13 @@ export default async function ResumoPage({ params, searchParams }: { params: Pro
         <Secao titulo="Insights">
           <div className="grid gap-2 md:grid-cols-2">
             {daSessao && (
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <p className="hud text-xs text-ink-faint" suppressHydrationWarning>última sessão · {formatarQuando(daSessao.ate)}</p>
                 {daSessao.insights.map((i) => <Insight key={i.id} insight={i} />)}
               </div>
             )}
             {doModo.length > 0 && (
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <p className="hud text-xs text-ink-faint">{lente ? rotuloDoModo(modo) : "tudo"} · forma e tendência</p>
                 {doModo.map((i) => <Insight key={i.id} insight={i} />)}
               </div>
@@ -109,6 +118,8 @@ export default async function ResumoPage({ params, searchParams }: { params: Pro
           <StatPanel stats={CS2_PANEL} snapshots={rows} lente={lente} appId={appId} limite={6} />
         </Secao>
       )}
+
+      <Atividade sessoes={listarSessoes(rows)} lente={lente} agora={new Date()} />
 
       {appId === 730 && <PorModo rows={rows} lente={lente} base={`/games/${appId}`} />}
     </>

@@ -59,14 +59,29 @@ const paraAws = process.env.FRAGIQ_ALVO === "aws";
  */
 const hsts = { key: "Strict-Transport-Security", value: "max-age=63072000" };
 
+/** Imagens de mapa, radar e arma: mudam só quando `npm run assets:cs2` roda de novo. */
+const ASSET_ESTATICO = "public, max-age=86400, stale-while-revalidate=604800";
+
 const nextConfig: NextConfig = {
   // Todas as imagens já são `unoptimized` (vêm prontas dos CDNs da Steam); sem
   // otimizador, o pacote da Lambda não precisa do sharp, que é binário nativo.
   // `env` fixa FRAGIQ_ALVO no build, para o layout saber que não está na Vercel.
   ...(paraAws ? { output: "standalone" as const, images: { unoptimized: true }, env: { FRAGIQ_ALVO: "aws" } } : {}),
   poweredByHeader: false,
+  async redirects() {
+    // As duas URLs antigas já circularam; resolvidas aqui, na borda, elas
+    // não custam uma renderização nem um salto a mais pelo servidor.
+    return [
+      { source: "/cs2", destination: "/games/730", permanent: false },
+      { source: "/dashboard", destination: "/games/730", permanent: false },
+    ];
+  },
   async headers() {
-    return [{ source: "/(.*)", headers: paraAws ? [...cabecalhosDeSeguranca, hsts] : cabecalhosDeSeguranca }];
+    return [
+      { source: "/(.*)", headers: paraAws ? [...cabecalhosDeSeguranca, hsts] : cabecalhosDeSeguranca },
+      { source: "/mapas/:path*", headers: [{ key: "Cache-Control", value: ASSET_ESTATICO }] },
+      { source: "/cs2/:path*", headers: [{ key: "Cache-Control", value: ASSET_ESTATICO }] },
+    ];
   },
 };
 

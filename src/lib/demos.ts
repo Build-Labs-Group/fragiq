@@ -6,6 +6,7 @@ import { metricasDaDemo, REGRAS_VERSAO, type Metricas } from "./demo/metricas";
 import { conversaoDaDemo } from "./demo/conversao";
 import { ritmoDaDemo, type RitmoDeTime } from "./demo/ritmo";
 import { economiaDaDemo, porCompraDaDemo, type EconomiaDeTime, type PorCompra } from "./demo/economia";
+import { lerLinhaDoTempo, linhaDoTempo, type LinhaDoTempo } from "./demo/linha-do-tempo";
 
 /**
  * Demos: a fila para o bot e o que fazer com o que ele traz.
@@ -122,11 +123,12 @@ export async function gravarDemo(matchId: string, bruto: unknown): Promise<{ jog
   const payload: DemoPayload = demoPayload.parse(bruto);
   const jogadores = linhasDosJogadores(matchId, payload);
   const times = linhasDosTimes(matchId, payload);
+  const linha = linhaDoTempo(payload) as unknown as Prisma.InputJsonValue;
   await prisma.$transaction([
     prisma.matchDemo.upsert({
       where: { matchId },
-      create: { matchId, status: "DONE", versao: payload.versao, parser: payload.parser, ticks: payload.ticks, dados: payload as Prisma.InputJsonValue },
-      update: { status: "DONE", error: null, versao: payload.versao, parser: payload.parser, ticks: payload.ticks, dados: payload as Prisma.InputJsonValue },
+      create: { matchId, status: "DONE", versao: payload.versao, parser: payload.parser, ticks: payload.ticks, dados: payload as Prisma.InputJsonValue, linhaDoTempo: linha },
+      update: { status: "DONE", error: null, versao: payload.versao, parser: payload.parser, ticks: payload.ticks, dados: payload as Prisma.InputJsonValue, linhaDoTempo: linha },
     }),
     prisma.matchPlayerDemo.deleteMany({ where: { matchId } }),
     prisma.matchPlayerDemo.createMany({ data: jogadores }),
@@ -161,6 +163,7 @@ export async function recomputarMetricasDasDemos(): Promise<number> {
       prisma.matchPlayerDemo.createMany({ data: linhasDosJogadores(d.matchId, parsed.data) }),
       prisma.matchTeamDemo.deleteMany({ where: { matchId: d.matchId } }),
       prisma.matchTeamDemo.createMany({ data: linhasDosTimes(d.matchId, parsed.data) }),
+      prisma.matchDemo.update({ where: { matchId: d.matchId }, data: { linhaDoTempo: linhaDoTempo(parsed.data) as unknown as Prisma.InputJsonValue } }),
     ]);
     n++;
   }
@@ -175,14 +178,34 @@ export type ConversaoGravada = Prisma.MatchTeamDemoGetPayload<object>;
 /** As métricas dos jogadores de uma partida, por SteamID; vazio quando a demo ainda não foi lida. */
 export async function metricasDaPartida(
   matchId: string,
-): Promise<{ status: string | null; porJogador: MetricasDaPartida; times: ConversaoGravada[] }> {
+): Promise<{ status: string | null; porJogador: MetricasDaPartida; times: ConversaoGravada[]; rounds: LinhaDoTempo | null }> {
   const [demo, linhas, times] = await Promise.all([
-    prisma.matchDemo.findUnique({ where: { matchId }, select: { status: true } }),
+    prisma.matchDemo.findUnique({ where: { matchId }, select: { status: true, linhaDoTempo: true } }),
     prisma.matchPlayerDemo.findMany({ where: { matchId } }),
     prisma.matchTeamDemo.findMany({ where: { matchId } }),
   ]);
   const porJogador: MetricasDaPartida = new Map();
   for (const linha of linhas) porJogador.set(linha.steamId, linha);
-  return { status: demo?.status ?? null, porJogador, times };
+  const rounds = demo?.status === "DONE" ? (lerLinhaDoTempo(demo.linhaDoTempo) ?? (await preencherLinhaDoTempo(matchId))) : null;
+  return { status: demo?.status ?? null, porJogador, times, rounds };
+}
+
+/**
+ * Demo lida antes de a linha do tempo existir: monta uma vez, a partir do
+ * payload, e guarda. Só a primeira visita paga a leitura dos `dados`;
+ * falhar aqui não derruba a página — ela só fica sem a faixa.
+ */
+async function preencherLinhaDoTempo(matchId: string): Promise<LinhaDoTempo | null> {
+  try {
+    const d = await prisma.matchDemo.findUnique({ where: { matchId }, select: { dados: true } });
+    const parsed = demoPayload.safeParse(d?.dados);
+    if (!parsed.success) return null;
+    const linha = linhaDoTempo(parsed.data);
+    await prisma.matchDemo.update({ where: { matchId }, data: { linhaDoTempo: linha as unknown as Prisma.InputJsonValue } });
+    return linha;
+  } catch (e) {
+    console.error("[demos] linha do tempo não montou:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 

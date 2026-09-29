@@ -23,6 +23,7 @@ Para avaliar a interface sem o cogniflow (e portanto sem Steam):
 
 ```bash
 npm run seed                  # 90 dias de histórico fictício de CS2
+npm run seed:partidas         # 12 partidas oficiais fictícias, uma com demo (página da partida)
 npm run recompute:sessions    # refaz as sessões materializadas (após mudar a regra de modo)
 npm run recompute:insights    # refaz os insights (após mudar a versão de uma regra)
 ```
