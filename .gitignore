@@ -49,3 +49,7 @@ bot/node_modules
 # pacote do site para a Lambda (scripts/aws/construir.mjs) e saída do CDK
 /.aws/
 /infra/cdk.out/
+
+# playwright
+/test-results/
+/playwright-report/
