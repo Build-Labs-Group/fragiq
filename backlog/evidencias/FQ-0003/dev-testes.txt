@@ -1,0 +1,5 @@
+$ npx vitest run tests/app/cabecalhos-seguranca.test.ts
+antes (next.config.ts vazio): 7 failed (7)
+depois:
+ Test Files  1 passed (1)
+      Tests  7 passed (7)

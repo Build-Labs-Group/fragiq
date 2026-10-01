@@ -1,0 +1,6 @@
+#c2410c sobre #f2eae8 razão 4.36 fonte 10.5pt (14px) ×1 ex: .font-bold.font-mono.tracking-tight > .text-accent «IQ»
+#7c8695 sobre #f2eae8 razão 3.1 fonte 8.3pt (11px) ×1 ex: .border-accent\/30 «beta»
+#7c8695 sobre #f5f6f8 razão 3.4 fonte 8.3pt (11px) ×4 ex: #tese > .py-16.max-w-6xl.px-6 > .revelar:nth-child(1) > .hud «A tese»
+#7c8695 sobre #ffffff razão 3.68 fonte 8.3pt (11px) ×1 ex: .text-\[11px\].tracking-wide.ml-auto «K/D · mesmos dados»
+#7c8695 sobre #f5f6f8 razão 3.4 fonte 9.0pt (12px) ×10 ex: tr:nth-child(1) > .pr-6 > .mt-0\.5.block.text-xs «178 contadores do CS2, não uma lista fix»
+#7c8695 sobre #ffffff razão 3.68 fonte 9.0pt (12px) ×4 ex: li:nth-child(1) > .justify-between.items-baseline.flex > .num.text-xs.text-ink-faint «10 s»

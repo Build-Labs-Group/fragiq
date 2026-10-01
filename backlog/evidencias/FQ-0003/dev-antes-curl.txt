@@ -1,0 +1,4 @@
+$ curl -sI https://fragiq.buildlabs.com.br/   (2026-10-01 03:51 UTC, main ab60712)
+HTTP/1.1 200 OK
+strict-transport-security: max-age=63072000
+x-powered-by: Next.js

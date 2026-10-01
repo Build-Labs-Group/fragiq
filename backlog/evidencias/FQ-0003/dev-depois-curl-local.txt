@@ -1,0 +1,14 @@
+$ curl -sI http://localhost:3999/seguranca   (next build && next start, branch claude/fq-0002-0003-contraste-cabecalhos)
+HTTP/1.1 200 OK
+Content-Security-Policy: frame-ancestors 'none'
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.steamstatic.com https://*.steampowered.com https://*.akamaihd.net; font-src 'self' data:; connect-src 'self' https://va.vercel-scripts.com; object-src 'none'; base-uri 'self'; form-action 'self'
+(sem x-powered-by)
+
+Console da home local: nenhuma violação de CSP. Os únicos erros são os 404 de
+/_vercel/insights e /_vercel/speed-insights, que só existem na Vercel.
+Sanidade: uma <img> de https://example.com disparou securitypolicyviolation
+img-src com disposition "report" (vigia, não bloqueia).

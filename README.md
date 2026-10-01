@@ -284,6 +284,24 @@ administraria. Trocar por Auth.js depois significa reimplementar `getSession()`
 
 O SteamID64 é a chave; `personaName` e avatar são só cache de exibição.
 
+### Cabeçalhos de segurança
+
+`next.config.ts` põe em toda resposta: `X-Content-Type-Options: nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, uma `Permissions-Policy`
+que desliga câmera, microfone, localização, pagamento e USB, e
+`frame-ancestors 'none'` + `X-Frame-Options: DENY` (nenhuma tela é feita para
+iframe; sem isso, seguir, sincronizar e as configurações de privacidade
+poderiam ser clicados por baixo de outra página). `x-powered-by` está
+desligado. O HSTS vem da Vercel.
+
+A CSP completa ainda está em **`Content-Security-Policy-Report-Only`**: o
+navegador avisa no console o que ela bloquearia e não bloqueia nada. Ela
+libera os CDNs de imagem da Steam e o Vercel Analytics/Speed Insights, e tem
+`'unsafe-inline'` em `script-src` porque a página não tem nonce. O próximo
+passo é promovê-la a `Content-Security-Policy` depois de um período sem
+avisos. `tests/app/cabecalhos-seguranca.test.ts` quebra se algum cabeçalho
+sumir. Imagem de um host novo pede a exceção em `img-src` antes.
+
 ## Limites desta camada de dados
 
 O que a Steam Web API entrega são **contadores vitalícios agregados**. Isso dá

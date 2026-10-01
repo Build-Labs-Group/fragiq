@@ -1,0 +1,16 @@
+App local (npm run seed + /api/auth/dev-login, sem variáveis COGNIFLOW_*), main ab60712, 2026-09-29 06:29 UTC
+
+GET /amigos -> 500 (desktop 1280x800 e celular 390x844)
+pageerror: A leitura da Steam passa pelo cogniflow: defina COGNIFLOW_API_URL, COGNIFLOW_TENANT_ID, COGNIFLOW_CONNECTION_ID e COGNIFLOW_SIGNING_SECRET (ver docs/cogniflow-tenant.md).
+  at cogniflowApi (src/lib/env.ts:118)
+  at invocar (src/lib/cogniflow-api.ts:50)
+  at capability (src/lib/steam/api.ts:38)
+  at getFriendIds (src/lib/steam/api.ts:196)
+  at idsDeAmigos (src/lib/social.ts:32)
+  at amigosNoFragiq (src/lib/social.ts:42)
+  at AmigosPage (src/app/amigos/page.tsx:33)
+
+Mesma rodada, mesma sessão: /games/730/inventario trata a mesma falha e abre (200, só loga
+"[inventario.leitura]"). /dashboard, /cs2, /games/730/*, /configuracoes, /seguranca: 200.
+
+$ find src/app -name error.tsx      -> nenhum arquivo (não há error boundary no App Router)

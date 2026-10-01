@@ -61,14 +61,17 @@
 
   --ink: #11141a;
   --ink-muted: #565e6b;
-  --ink-faint: #7c8695;
+  /* O texto mais claro ainda é texto: 4,5:1 sobre todo fundo claro (o
+     `#7c8695` de antes dava 3,4:1 no `--canvas`). Conferido em
+     tests/app/contraste-tokens.test.ts. */
+  --ink-faint: #5f6875;
 
   /* O mesmo laranja do escuro tem 2,6:1 sobre branco — ilegível. No claro
-     a marca escurece até 4,9:1 sobre `--surface` mantendo o matiz; é a
-     mesma cor, na luz certa. */
-  --accent: #c2410c;
+     a marca escurece até 5,7:1 sobre `--surface` mantendo o matiz (4,8:1 no
+     cabeçalho translúcido da home); é a mesma cor, na luz certa. */
+  --accent: #b83d0b;
   --accent-soft: #fdece3;
-  --accent-glow: rgba(194, 65, 12, 0.16);
+  --accent-glow: rgba(184, 61, 11, 0.16);
   --danger: #b3261e;
   --warn: #8a6300;
 
@@ -96,7 +99,8 @@
 
     --ink: #eef0f3;
     --ink-muted: #a3a9b3;
-    --ink-faint: #7d8590;
+    /* 4,5:1 também sobre `--surface-2` e `--accent-soft` (#7d8590 dava 4,49). */
+    --ink-faint: #858d99;
 
     /* A marca é luz, não fundo: aparece onde há informação — o valor que
        subiu, a linha do gráfico, a aba ativa. Medido: 6,2:1 sobre --surface. */

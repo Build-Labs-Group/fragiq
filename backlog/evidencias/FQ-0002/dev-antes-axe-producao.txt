@@ -1,0 +1,8 @@
+axe-core 4.10.2, tags wcag2a + wcag2aa, home de produção, tema claro, 1280x800
+https://fragiq.buildlabs.com.br/  (2026-10-01 03:51 UTC, main ab60712)
+
+violações: color-contrast x21
+  #c2410c sobre #f2eae8 razão 4.36  x1   (logo "IQ")
+  #7c8695 sobre #f2eae8 razão 3.1   x1   (selo "beta")
+  #7c8695 sobre #f5f6f8 razão 3.4   x14
+  #7c8695 sobre #ffffff razão 3.68  x5
