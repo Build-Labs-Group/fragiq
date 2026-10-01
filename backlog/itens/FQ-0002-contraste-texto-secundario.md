@@ -10,7 +10,7 @@ area: tokens de cor (text-ink-faint, text-accent)
 criado_por: po
 criado_em: 2026-09-29
 atualizado_em: 2026-10-01
-commits: []
+commits: [2da3c95]
 relacionados: []
 ---
 
@@ -73,7 +73,7 @@ estatísticas, tempos) e o "IQ" do logo passam do mínimo de contraste do
 WCAG AA nos dois temas. A troca foi nos tokens de `globals.css`, então vale
 para o site inteiro.
 
-**Commits:** (preenchido no commit do backlog)
+**Commits:** `2da3c95`
 
 **Arquivos:** `src/app/globals.css` (tokens `--ink-faint` claro e escuro,
 `--accent` e `--accent-glow` claros) · `docs/design.md` (regra de contraste) ·

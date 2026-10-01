@@ -10,7 +10,7 @@ area: next.config.ts
 criado_por: po
 criado_em: 2026-09-29
 atualizado_em: 2026-10-01
-commits: []
+commits: [3e3a43a]
 relacionados: [LR-0002 (mesmo problema na plataforma da Lilian)]
 ---
 
@@ -67,7 +67,7 @@ quanto do endereço vai como referrer e que câmera, microfone, localização,
 pagamento e USB estão desligados. A CSP completa vigia em Report-Only sem
 bloquear nada. O `x-powered-by: Next.js` some.
 
-**Commits:** (preenchido no commit do backlog)
+**Commits:** `3e3a43a`
 
 **Arquivos:** `next.config.ts` (`headers()` e `poweredByHeader: false`) ·
 `tests/app/cabecalhos-seguranca.test.ts` (novo) · `README.md` (seção
