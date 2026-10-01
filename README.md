@@ -296,7 +296,8 @@ desligado. O HSTS vem da Vercel.
 
 A CSP completa ainda está em **`Content-Security-Policy-Report-Only`**: o
 navegador avisa no console o que ela bloquearia e não bloqueia nada. Ela
-libera os CDNs de imagem da Steam e o Vercel Analytics/Speed Insights, e tem
+libera os CDNs de imagem da Steam, o Vercel Analytics/Speed Insights e o
+beacon do Web Analytics que o Cloudflare injeta na página, e tem
 `'unsafe-inline'` em `script-src` porque a página não tem nonce. O próximo
 passo é promovê-la a `Content-Security-Policy` depois de um período sem
 avisos. `tests/app/cabecalhos-seguranca.test.ts` quebra se algum cabeçalho
