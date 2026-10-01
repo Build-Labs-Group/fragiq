@@ -12,15 +12,17 @@ const emDesenvolvimento = process.env.NODE_ENV === "development";
  *   `*.steampowered.com`, `*.akamaihd.net`);
  * - Vercel Analytics e Speed Insights servem do próprio domínio
  *   (`/_vercel/...`); `va.vercel-scripts.com` cobre o modo de depuração deles;
+ * - o Cloudflare na frente do domínio injeta o beacon do Web Analytics dele
+ *   (`static.cloudflareinsights.com`, que envia para `cloudflareinsights.com`);
  * - em `next dev`, o HMR precisa de `eval` e de WebSocket.
  */
 const cspReportOnly = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com${emDesenvolvimento ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://static.cloudflareinsights.com${emDesenvolvimento ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.steamstatic.com https://*.steampowered.com https://*.akamaihd.net",
   "font-src 'self' data:",
-  `connect-src 'self' https://va.vercel-scripts.com${emDesenvolvimento ? " ws:" : ""}`,
+  `connect-src 'self' https://va.vercel-scripts.com https://cloudflareinsights.com${emDesenvolvimento ? " ws:" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

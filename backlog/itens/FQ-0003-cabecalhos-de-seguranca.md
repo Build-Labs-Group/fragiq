@@ -60,6 +60,17 @@ Decisões que tomei sozinho:
   desconhecido, como `interest-cohort`, gera aviso no console.
 - HSTS já vinha da Vercel e não mudou.
 
+### 2026-10-01 · Dev (depois do deploy)
+Em produção os 6 cabeçalhos vieram e o `x-powered-by` sumiu
+(`dev-depois-producao.txt`). O console da home tinha um aviso
+"[Report Only]" que o build local não mostrava: o Cloudflare na frente do
+domínio injeta o beacon do Web Analytics dele (`static.cloudflareinsights.com`).
+Ele entrou em `script-src` e `connect-src` num PR de seguimento, com teste.
+`/cs2` exige sessão (sem login, vai para `/`), eu não tenho login Steam e
+não achei id de partida público, então essas duas telas ficam para a
+validação da PO, logada. O status continua
+`feito`.
+
 ## Entrega
 **Resumo:** toda resposta do site passa a dizer ao navegador que não pode
 ser exibida dentro de iframe, que o tipo de arquivo não deve ser adivinhado,

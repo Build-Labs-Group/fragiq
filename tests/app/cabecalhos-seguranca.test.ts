@@ -52,6 +52,10 @@ describe("cabeçalhos de segurança", () => {
     expect(csp["img-src"]).toEqual(expect.arrayContaining(["'self'", "https://*.steamstatic.com"]));
     expect(csp["script-src"]).toEqual(expect.arrayContaining(["'self'", "https://va.vercel-scripts.com"]));
     expect(csp["connect-src"]).toEqual(expect.arrayContaining(["'self'"]));
+    // O Cloudflare na frente do domínio injeta o beacon do Web Analytics em
+    // toda página; sem isso a home avisa no console em produção.
+    expect(csp["script-src"]).toContain("https://static.cloudflareinsights.com");
+    expect(csp["connect-src"]).toContain("https://cloudflareinsights.com");
     // frame-ancestors é ignorado em Report-Only; ele mora na CSP que bloqueia.
     expect(csp["frame-ancestors"]).toBeUndefined();
   });

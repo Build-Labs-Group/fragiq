@@ -1,0 +1,24 @@
+$ curl -sI https://fragiq.buildlabs.com.br/   (2026-10-01 03:57 UTC, main e170b9e, deploy dpl_AReHVAfzJX38mQrC4BMsgCCWQDEb)
+HTTP/1.1 200 OK
+content-security-policy: frame-ancestors 'none'
+content-security-policy-report-only: default-src 'self'; script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.steamstatic.com https://*.steampowered.com https://*.akamaihd.net; font-src 'self' data:; connect-src 'self' https://va.vercel-scripts.com; object-src 'none'; base-uri 'self'; form-action 'self'
+permissions-policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+referrer-policy: strict-origin-when-cross-origin
+strict-transport-security: max-age=63072000
+x-content-type-options: nosniff
+x-frame-options: DENY
+(sem x-powered-by)
+
+$ curl -sI https://fragiq.buildlabs.com.br/partida/inexistente
+HTTP/1.1 404 Not Found · x-frame-options: DENY (vale também para erro)
+
+Console da home em produção: um aviso [Report Only] real:
+  Loading the script 'https://static.cloudflareinsights.com/beacon.min.js/...'
+  violates ... "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com"
+O Cloudflare na frente do domínio injeta o beacon do Web Analytics dele.
+Corrigido no PR de seguimento (script-src + connect-src); conferência abaixo.
+
+/cs2 → 307 /games/730 → 307 / sem sessão: não deu para abrir /cs2 e
+/partida/<id> logado (login Steam é do Murilo). O layout e os scripts são os
+mesmos da home; o que só essas telas carregam são imagens da Steam, cobertas
+por img-src.

@@ -1,0 +1,5 @@
+axe-core 4.10.2, tags wcag2a + wcag2aa, home de produção, tema claro, 1280x800
+https://fragiq.buildlabs.com.br/  (2026-10-01 03:58 UTC, main e170b9e, deploy dpl_AReHVAfzJX38mQrC4BMsgCCWQDEb)
+
+--ink-faint #5f6875 · violações 0 · color-contrast aprovado em 75 nós
+(antes: color-contrast x21, ver dev-antes-axe-producao.txt)
