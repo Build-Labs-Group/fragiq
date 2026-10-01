@@ -1,0 +1,5 @@
+axe-core 4.10.2, tags wcag2a + wcag2aa, home em `next build && next start` local
+(branch claude/fq-0002-0003-contraste-cabecalhos), 1280x800
+
+tema claro  (--ink-faint #5f6875, --accent #b83d0b): violações 0 · color-contrast aprovado em 75 nós
+tema escuro (--ink-faint #858d99):                   violações 0 · color-contrast aprovado em 75 nós

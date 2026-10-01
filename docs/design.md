@@ -58,6 +58,12 @@ contradiz alguma, é a tela que está errada.
 | `--surface` / `--surface-2` | `#13161a` / `#1a1e24` | cartão / bloco interno |
 | `--line` / `--line-soft` | `#262b32` / `#1e2228` | anel de cartão / divisória de tabela |
 
+Contraste: todo token de texto (`--ink`, `--ink-muted`, `--ink-faint`,
+`--accent`) tem pelo menos 4,5:1 sobre `--canvas`, `--surface`,
+`--surface-2` e `--accent-soft`, nos dois temas — inclusive o `--ink-faint`
+dos rótulos `.hud` de 11px. `tests/app/contraste-tokens.test.ts` faz a conta
+do WCAG em cima de `globals.css` e quebra se um token novo não alcançar.
+
 Regra dura: **`--accent` nunca codifica valência.** Subiu/caiu é
 `--good`/`--bad`; laranja é "olhe aqui", não "bom".
 

@@ -1,0 +1,7 @@
+$ npx vitest run tests/app/contraste-tokens.test.ts
+antes da troca dos tokens: 7 failed | 28 passed (35)
+  claro: --ink-faint sobre --canvas, --surface, --surface-2, --accent-soft; logo e rótulos do cabeçalho
+  escuro: --ink-faint sobre --surface-2, --accent-soft
+depois:
+ Test Files  1 passed (1)
+      Tests  35 passed (35)
