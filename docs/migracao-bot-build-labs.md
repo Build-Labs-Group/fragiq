@@ -1,6 +1,6 @@
 # Migração do bot para a conta da Build Labs
 
-Data: 2026-10-02 · Situação: **aprovada pelo Murilo em 02/10/2026**, em execução.
+Data: 2026-10-02 · Situação: **virada feita em 02/10/2026 às 00:59–01:00 (Brasília)**; falta a conferência com partida real e o passo 7.
 O host é **compartilhado** (depois recebe a Lilian), então a infraestrutura
 mora na `infra-compartilhada` (pilha `InfraCompartilhada-Host`), não aqui.
 
@@ -96,6 +96,22 @@ logados ao mesmo tempo**.
 
 **Volta:** `docker stop` na nova e `docker start` na antiga. O segredo antigo
 continua lá até o passo 7.
+
+## Resultado (02/10/2026)
+
+| Passo | O que se viu |
+|---|---|
+| Host | `i-0eaf8379b0e374a0b` (t4g.small, crédito `standard`, IMDSv2, SG sem entrada, SSM `Online`), IPv4 `3.15.146.70` |
+| Mercado pelo IP novo | 3 × `priceoverview` com **200** (4 s de espaço). O bot não lê preço em produção (`BOT_PRECOS` desligado desde 18/09, igual à EC2 antiga) |
+| Parser em ARM | demo de 24 rounds (`3845941388759793919`, 141 MB em .bz2): saída ARM, x86 local e o `match_demos.dados` de produção com o **mesmo hash canônico** (`8210a14a…`, 3.129 eventos). Pico de 321 MB no cgroup (com cache do arquivo), parse 7 s, `bzip2` 20 s |
+| Segredo | `fragiq/bot` copiado depois de parar o bot antigo (token mais novo), mais o `STEAM_BOT_ACCOUNT` do `docker inspect`; chaves e hash conferidos nas duas pontas, valor fora do chat. `Overwrite` mantém descrição e tags (testado) |
+| Virada | bot antigo parado às 03:59:35Z (`restart=no`, log "Encerrando…" no `bot_logs`), novo logado às 04:00:36Z: ~1 min sem bot |
+| Conferência | `bot_status`: `logado=true`, GC conectado, 5 amigos, tick a cada 30 s. `bot_logs` com "Conectado como …" do host novo. Memória: bot 149 MB de 900; host com 1,2 GB disponíveis |
+| Falta | `bot_observations` e `pending_captures` novas (precisa de uma partida), mensagem de chat entregue e o refresh token regravado no parâmetro (a Steam renova sozinha, sem data) |
+
+Acesso à EC2 antiga para a virada: regra temporária de SSH no SG para o IP
+do PC e EC2 Instance Connect (chave de 60 s); a regra foi revogada logo depois.
+Volta: a mesma regra, `docker start fragiq-bot` lá e `docker stop fragiq-bot` aqui.
 
 ## 4. Achado: o site também depende da conta pessoal
 
