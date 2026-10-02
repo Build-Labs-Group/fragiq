@@ -94,27 +94,36 @@ o caminho de emergência.
 Um cliente Steam mantém conexão TCP persistente. Serverless não comporta.
 Precisa de um host sempre ligado: Railway, Fly.io ou um VPS pequeno.
 
-## EC2
+## Onde roda
 
-Roda numa `t2.micro` (free tier) em `us-east-1`, instância `fragiq-bot`,
-Amazon Linux 2023 com Docker. O Fly ficou como plano B: o `fly.toml` continua
-válido, mas o trial acabou antes do primeiro deploy.
+No **host compartilhado da Build Labs** (conta 576951332499, us-east-2): a
+instância `infra-compartilhada-host`, uma t4g.small (ARM) da pilha
+`InfraCompartilhada-Host` do repositório `Build-Labs-Group/infra-compartilhada`
+(`docs/host-compartilhado.md` lá). O bot é o container `fragiq-bot`
+(`compose.yaml`, 900 MB de limite). A migração da EC2 antiga está em
+`docs/migracao-bot-build-labs.md`.
 
-- Acesso: `ssh -i ~/.ssh/fragiq-bot.pem ec2-user@<ip>`. O security group só
-  abre a 22 para o IP de quem criou a instância; mudou de rede, atualize a
-  regra.
-- Não há `.env` no servidor. O refresh token e o segredo do webhook vivem no
-  Secrets Manager (`fragiq/bot`, JSON com as mesmas chaves das variáveis);
-  a instância tem a role `fragiq-bot-ec2`, que só pode ler e escrever esse
-  segredo. O bot lê no boot e grava de volta quando o steam-user renova o
-  token — sem isso o próximo reboot logaria com token morto.
-- Variáveis não sensíveis (conta, URL do webhook, grace) ficam no
-  `/opt/fragiq-bot/run.sh`, que reconstrói a imagem e sobe o container com
-  `--restart unless-stopped`. `./deploy.sh` faz rsync do código e chama ele.
-- Para trocar um valor do segredo: `aws secretsmanager put-secret-value
-  --secret-id fragiq/bot --secret-string '{...}'` e `sudo docker restart
-  fragiq-bot`.
-- Logs: `sudo docker logs -f fragiq-bot`.
+- **Acesso:** sem SSH e sem porta aberta. Shell pelo Session Manager:
+  `aws ssm start-session --target <InstanciaId> --profile buildlabs --region us-east-2`.
+  Comando avulso: `aws ssm send-command ... --document-name AWS-RunShellScript`.
+- **Segredos:** não há `.env` no servidor. O refresh token e o segredo do
+  webhook vivem no Parameter Store, `SecureString` **`/fragiq/prod/bot`**
+  (JSON com as mesmas chaves das variáveis). A role do host só lê e grava esse
+  parâmetro (do fragiq). O bot lê no boot e grava de volta quando o steam-user
+  renova o token. `FRAGIQ_SECRET_ID` (Secrets Manager da conta pessoal) ainda
+  funciona, para a volta.
+- **Variáveis não sensíveis:** `producao.env`, no git.
+- **Publicar:** `./deploy.sh` (perfil `buildlabs`) empacota esta pasta, sobe
+  no bucket de deploy e roda o `run.sh` no host pelo `aws ssm send-command`.
+  Ele reconstrói a imagem e só recria o container se o bot já estava rodando:
+  `INICIAR=1 ./deploy.sh` liga um bot parado. **Nunca dois bots logados na
+  mesma conta** (`LogonSessionReplaced`).
+- **Trocar um valor do segredo:** grave o JSON inteiro de um arquivo temporário
+  (`aws ssm put-parameter --name /fragiq/prod/bot --type SecureString --overwrite
+  --value file://...`), apague o arquivo e `docker restart fragiq-bot` no host.
+- **Logs:** no `/admin`; no host, `docker logs -f fragiq-bot`.
+- **IP:** o Mercado da Steam é lido pelo IPv4 público do host. Parar e ligar
+  a instância troca o IP; teste o `priceoverview` depois.
 
 ## Primeiro login
 

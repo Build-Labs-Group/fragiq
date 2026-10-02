@@ -1,6 +1,8 @@
 # Migração do bot para a conta da Build Labs
 
-Data: 2026-10-02 · Situação: **proposta**, esperando o ok do custo.
+Data: 2026-10-02 · Situação: **aprovada pelo Murilo em 02/10/2026**, em execução.
+O host é **compartilhado** (depois recebe a Lilian), então a infraestrutura
+mora na `infra-compartilhada` (pilha `InfraCompartilhada-Host`), não aqui.
 
 O bot de presença (`bot/`) roda na EC2 `fragiq-bot` (t2.micro, us-east-1) da
 conta pessoal 981629165995. Lá não há mais free tier: custa cerca de
@@ -17,11 +19,11 @@ custo zero.
 | Crédito de CPU | `standard` (não `unlimited`) | O trial cobra os créditos de CPU excedentes. Com `standard` a CPU fica mais lenta no pico, mas não gera cobrança |
 | Rede | VPC padrão, subnet pública, IPv4 público automático (sem Elastic IP) | O cliente Steam e o site precisam de IPv4. Uma NAT sairia muito mais cara |
 | Acesso | **SSM Session Manager**, security group sem nenhuma porta de entrada | Dispensa `fragiq-bot.pem` (que não está neste PC), regra de IP e porta 22 aberta |
-| Disco | gp3 de 8 GB, criptografado | As demos vão para `/tmp` e são apagadas depois do parse |
+| Disco | gp3 de 12 GB, criptografado, mais swap de 2 GB | Imagens do Docker de mais de um projeto, swap e as demos em `/tmp` (apagadas depois do parse) |
 | Segredo | SSM Parameter Store `SecureString` **`/fragiq/prod/bot`** (ADR 0005) | Grátis, no lugar do Secrets Manager. O JSON tem as mesmas chaves de hoje |
-| Role | `FragiqBotInstanceRole`: `AmazonSSMManagedInstanceCore` + `ssm:GetParameter`/`PutParameter` só em `/fragiq/prod/bot` + `kms:Decrypt`/`Encrypt` da chave `aws/ssm` | Mínimo necessário: o bot regrava o refresh token quando a Steam o renova |
-| Publicação | `deploy.sh` empacota `bot/`, sobe num bucket `fragiq-bot-deploy` (privado, expira em 7 dias) e roda `aws ssm send-command` com o `run.sh` | Dispensa rsync e SSH |
-| IaC | CDK em `bot/infra/`, pilha **`Fragiq-Prod`**, com as tags de `aws.md` | Por enquanto, publicada da máquina local com `--profile buildlabs`. Quando o repositório for para a `Build-Labs-Group`, entra na esteira |
+| Role | `InfraCompartilhadaHostRole`: `AmazonSSMManagedInstanceCore` + `ssm:GetParameter`/`PutParameter` só em `/fragiq/prod/bot` + `kms:Decrypt`/`Encrypt` da chave `aws/ssm` (via SSM) + leitura do bucket de deploy | Mínimo necessário: o bot regrava o refresh token quando a Steam o renova. A tag `Hospeda=fragiq` diz à auditoria de segredos que o prefixo é do projeto hospedado |
+| Publicação | `deploy.sh` empacota `bot/`, sobe no bucket `infra-compartilhada-host-deploy-576951332499` (privado, expira em 3 dias) e roda `aws ssm send-command` com o `run.sh`, que faz `docker compose` com o `compose.yaml` (900 MB de limite) | Dispensa rsync e SSH |
+| IaC | CDK na `infra-compartilhada` (`lib/host-stack.ts`), pilha **`InfraCompartilhada-Host`**, tags de `aws.md`, publicada pela esteira dela | O host é de vários projetos. O `deploy.sh` do bot roda da máquina local com `--profile buildlabs` (o fragiq não está na org) |
 
 ### Custo (sai do crédito)
 
@@ -29,9 +31,9 @@ custo zero.
 |---|---|---|
 | t4g.small | US$ 0 (trial) | US$ 12,26 sob demanda. Trocar para **t4g.micro spot** (~US$ 2) ou t4g.small spot (~US$ 3,70) |
 | IPv4 público | US$ 3,65 | US$ 3,65 |
-| EBS gp3 8 GB | US$ 0,64 | US$ 0,64 |
+| EBS gp3 12 GB | US$ 0,96 | US$ 0,96 |
 | SSM (parâmetro, Session Manager, Run Command), S3 | ~US$ 0,01 | ~US$ 0,01 |
-| **Total** | **~US$ 4,30/mês** | **~US$ 6,30/mês** |
+| **Total** | **~US$ 4,62/mês** | **~US$ 6,62/mês** (com spot) |
 
 Hoje são US$ 13 em dinheiro. A migração tira esse gasto do cartão. O alarme
 de orçamento da `InfraCompartilhada-Prod` (US$ 30) continua valendo.
@@ -47,7 +49,7 @@ Preços consultados em 02/10 (us-east-2): t4g.small spot de US$ 0,005 a
   a conta antiga ser desligada, para a volta funcionar.
 - `Dockerfile`: a base `node:22-alpine` já é multi-arquitetura, e o
   `@laihoe/demoparser2` tem binário `linux-arm64-musl`. Fica igual.
-- `bot/infra/` (CDK) e `deploy.sh`/`run.sh` novos (ver seção 1).
+- `compose.yaml`, `producao.env` (variáveis não sensíveis), `deploy.sh` e `run.sh` novos (ver seção 1). A infraestrutura fica na `infra-compartilhada`.
 - Teste: `segredos.ts` com cliente simulado (leitura, gravação do token
   preservando as outras chaves, fallback para o `.env`).
 
@@ -58,8 +60,9 @@ na mesma conta (`LogonSessionReplaced`), por isso **nunca há dois bots
 logados ao mesmo tempo**.
 
 1. **PR** com o código e a infra. CI verde.
-2. **Infra** (com o ok do custo): `cdk deploy Fragiq-Prod`. A instância sobe
-   **sem iniciar o bot**.
+2. **Infra**: merge do PR da `infra-compartilhada` (a esteira cria a pilha
+   `InfraCompartilhada-Host`). Depois `./deploy.sh` constrói a imagem no host
+   **sem iniciar o bot** (só `INICIAR=1` liga).
 3. **Testes na instância nova, antes da virada:**
    - Mercado da Steam: `curl` no `priceoverview` a partir do IP novo. Esse é
      o risco principal, porque a Steam responde 429 para alguns IPs da AWS (o
@@ -72,7 +75,7 @@ logados ao mesmo tempo**.
    de stdin para stdin). Conferir só as **chaves** do JSON e o hash do valor
    nas duas pontas.
 5. **Virada** (~2 min sem bot): `docker update --restart=no` e `docker stop`
-   na EC2 antiga, depois `run.sh` na nova. O `pending_captures` fica no site,
+   na EC2 antiga, depois `INICIAR=1 ./deploy.sh` na nova. O `pending_captures` fica no site,
    então nada se perde nesse intervalo.
 6. **Conferência (tela ↔ banco ↔ logs):**
    - `/admin`, seção Bot: heartbeat `logado`, logs chegando, sem
