@@ -21,7 +21,7 @@ export const LAYER_DO_ADAPTADOR = `arn:aws:lambda:${REGIAO}:753240598075:layer:L
  * principal não é da pilha: troca pelo `npm run virada-dns`, que também
  * desfaz.
  */
-export const VIRADA_FEITA = false;
+export const VIRADA_FEITA = true;
 
 export interface Ambiente {
   nome: "prod";
