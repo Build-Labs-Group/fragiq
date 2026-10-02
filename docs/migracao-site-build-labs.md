@@ -1,7 +1,10 @@
 # Migração do site para a conta da Build Labs
 
-Data: 2026-10-02 · Situação: **proposta**. O código está pronto neste PR. Nada
-foi criado na AWS, na Cloudflare nem no Neon, e nenhum dado foi tocado.
+Data: 2026-10-02 · Situação: **site virado para a AWS em 02/10/2026 às
+17:06 UTC** (DNS de `fragiq.buildlabs.com.br`) e **banco no Neon desde as
+21:27 UTC** (D2). Resultado, volta e o que falta na parte 8. A Vercel e o
+Supabase ficam intactos como volta por uma semana. As partes 1 a 7 são o
+plano como foi escrito.
 
 O site (`fragiq.buildlabs.com.br`) roda hoje na **Vercel** (Hobby) e grava num
 Postgres do **Supabase**. Os segredos vêm de `cogniflow/tenants/fragiq`, no
@@ -320,3 +323,110 @@ e o banco depois, com D2 se a meta é custo zero ou D1 se o Murilo aceitar
 **Agente** (depois de cada ok): parâmetro, deploy, testes do passo 5,
 virada, conferências e limpeza, e atualizar este documento, o
 `docs/segredos.md` e o `_buildlabs/projetos.md`.
+
+## 8. Resultado (02/10/2026, horários em UTC)
+
+### Esteira
+
+O `publicar` agora roda pelo `.github/workflows/publicar.yml` daqui, cópia
+do modelo da `infra-compartilhada` (infra-compartilhada#10, fragiq#15). Prova:
+run 37035575357 (push na `main`, 16:41), credencial `fragiq (producao)`, log
+do corretor `liberado` para `Build-Labs-Group/fragiq`, e o `cdk diff` antes
+mostrou que só o código da Lambda `Site` mudava (nada de DNS nem
+certificado). Cada push na `main` publica a pilha `Fragiq-Prod`.
+
+### Teste em `fragiq-aws.` (16:55)
+
+| O quê | Resultado |
+|---|---|
+| `/` | 200; HSTS `max-age=63072000`, `X-Frame-Options: DENY`, CSP Report-Only, sem `x-powered-by`; estático 200 com `immutable` |
+| `/cs2`, `/admin` sem sessão | 307 para `/games/730` e `/`, igual à Vercel |
+| `/api/health` | 200, `collector ok`, mesma última coleta da Vercel (05:54) |
+| Login pela Steam | 307 para `steamcommunity.com/openid/login` com `return_to` e `realm` do próprio domínio; callback forjado volta com "Sessão de login expirada" (a validação roda). O login completo precisa de uma pessoa com conta Steam |
+| `/api/bot/outbox`, `partidas`, `demos` | 401 sem segredo; com segredo, 200 e o **mesmo corpo** da Vercel na mesma hora |
+| `POST /api/bot/logs` | 200 `{"gravadas":1}` (linha DEBUG "teste da migração", 16:55:42) |
+| Agenda | a regra `fragiq-coleta-diaria` liga com a virada (05:00 UTC). Não rodei à mão antes: a rota do cron enfileira lembretes no chat da Steam com o link da `APP_URL`, e antes da virada ela era o domínio de teste. A primeira execução real é 03/10 05:00; confira a linha nova em `cron_runs` |
+
+### Clientes que falavam com `*.vercel.app`
+
+| Cliente | Antes | Depois | Prova |
+|---|---|---|---|
+| Bot (`bot/producao.env`, `FRAGIQ_WEBHOOK_URL`) | `fragiq-rouge.vercel.app` | `fragiq.buildlabs.com.br` | publicado no host 16:57 (fragiq#16); do host, a URL nova responde 401 JSON do app, sem desafio da Cloudflare |
+| cogniflow, conexão `web` do tenant `fragiq` (`WEBHOOK_CALLBACK_URL` e `WEBHOOK_DATA_URL` em `/cogniflow/prod/platform`, versão 7) | `fragiq-rouge.vercel.app` | `fragiq.buildlabs.com.br` | o cogniflow não tem tela nem serviço que grave essa URL: ela mora no JSON da plataforma, trocado em processo (mesmo tamanho, resto igual, tags e descrição mantidas). `SECRET_REFRESH` mudou nas Lambdas do cogniflow que leem esse JSON, para relerem. Turno de teste às 16:59: `POST https://fragiq.buildlabs.com.br/api/cogniflow/callback 200` no `cogniflow-integration-outbound` |
+| Retorno do login da Steam | `APP_URL` da Vercel | `APP_URL` da Lambda = `https://fragiq.buildlabs.com.br` (fragiq#17) | `return_to` conferido acima |
+| Texto do grupo da Steam (`bot/src/grupo.ts`) | `fragiq-rouge.vercel.app` | código trocado | o grupo publicado na Steam só muda se alguém rodar o script |
+
+### Virada do DNS (17:06)
+
+- **Antes** (guardado para a volta): `fragiq.buildlabs.com.br` **A
+  `76.76.21.21`, proxy ligado, TTL automático** (id Cloudflare
+  `f27d97d0e2831bd925d8a5b3ff40006c`, sem comentário). Regra de SSL do host:
+  "fragiq: SSL Full (Vercel)", que não mudou.
+- **Depois**: **CNAME `d-mfi8fr4boe.execute-api.us-east-2.amazonaws.com`,
+  proxy ligado, TTL automático** (`npm run virada-dns -- --ir --sim` em
+  `infra/`).
+- Conferência: `/` 200 sem `x-vercel-id`; `/api/health` 200; rotas do bot
+  com segredo 200; turno de teste do cogniflow às 17:07 chegou na Lambda
+  (`[cogniflow] resposta sem pergunta aberta: teste-migracao-depois:730`, sem
+  gravar nada); log da Lambda sem erro (36 requisições em 4 min, P50 63 ms).
+- Os dois turnos de teste usam um usuário que não existe
+  (`teste-migracao-antes` e `-depois`): o callback responde `orphan` e o
+  banco do FragIQ não muda; a conversa de teste fica no cogniflow.
+
+**Volta do site (menos de 1 min):** `AWS_PROFILE=buildlabs npm run virada-dns -- --voltar --sim`
+em `infra/` (recria o A `76.76.21.21` com proxy). A Vercel continua no ar e
+lendo o Supabase. Enquanto o banco for o Supabase, nada se perde.
+
+### Ainda na Vercel (de propósito, como volta)
+
+- O projeto `fragiq` da Vercel segue publicado em `fragiq-rouge.vercel.app`,
+  com o cron das 05:00 lendo e gravando no **Supabase**. Depois que o banco
+  for para o Neon, esse cron grava num banco que ninguém lê: inofensivo, mas
+  o Supabase deixa de ser cópia fiel para uma volta tardia.
+- Sem deploy da Vercel desde a transferência do repositório: o painel dela
+  mostra o bot "parado" entre os turnos do repouso.
+
+### Medição do D2 (20:50–21:20)
+
+`scripts/banco/medir.ts --minutos 30 --passo 60` no Supabase, com o bot já em
+repouso (fragiq#16): **0,5 consulta/min** (antes do D2: 35,2). Dessas, 0,3/min
+são o `cron_runs` do `/api/health`, chamado a cada ~3 min por um monitor de
+fora no endereço da **Vercel** (`fragiq-rouge.vercel.app`; log da Vercel, 20
+chamadas em 1 h; nenhum repositório da Build Labs chama). A Vercel continua no
+Supabase, então essas chamadas não acordam o Neon. O resto (~0,2/min) é o bot
+pela AWS: `steam_messages`, `pending_captures`, `matches` e o `bot_status`
+quando há trabalho. A estimativa do script (Neon acordado ~93%, ~170 CU-hora)
+conta o monitor da Vercel; a prova de verdade é o consumo do projeto Neon.
+
+### Banco: Supabase → Neon (21:26–21:28)
+
+Neon `fragiq` = `bold-credit-22972289` (aws-us-east-2, plano grátis, branch
+`main`, endpoint `ep-lively-wave-b5pd5hff`, 0,25 CU, suspensão padrão de 5
+min). Schema aplicado às 17:11 com `prisma migrate deploy` das 39 migrações de
+produção.
+
+| Hora (UTC, relógio do host) | Passo |
+|---|---|
+| 21:25 | ensaio sem `--sim`: Neon vazio, mesmo schema, 28 tabelas na ordem das FKs |
+| 21:26:27 | bot parado (`docker stop fragiq-bot` no host, pelo SSM) |
+| 21:26 | `copiar.ts --sim`: cópia em 13,3 s, conferência igual (linhas, checksums, datas máximas, sequences, índices, restrições, enums) |
+| 21:27 | `/fragiq/prod/site` versão 1 → **2** (`DATABASE_URL` com pooler e `DIRECT_DATABASE_URL` do Neon); `SEGREDO_RELIDO` nas Lambdas `fragiq-site` e `fragiq-migracoes` para ambientes novos lerem a versão 2 |
+| 21:27:40 | bot religado (`docker start`); 73 s parado. Na volta ele já reportou o fim de uma partida e agendou a captura |
+
+Conferência depois (`conferir.ts`, Supabase → Neon): **nenhuma diferença de
+estrutura, nenhuma tabela com menos linhas no Neon**, e só linhas novas do
+bot no Neon (bot_logs 6674 → 6687, bot_observations 242 → 244,
+pending_captures 0 → 2, sync_runs 975 → 977). O Supabase ficou com as mesmas
+contagens do momento da cópia: nada mais grava lá pela AWS.
+`/api/health` na AWS: 200, `dbLatencyMs` 11 a 76.
+
+**Volta do banco:** `/fragiq/prod/site` de volta para a versão 1 (Supabase) e
+renovar as duas Lambdas. O que foi gravado no Neon depois das 21:27 não volta
+sozinho; a volta depois de horas pede uma cópia no sentido contrário, numa
+janela igual.
+
+**A acompanhar:** consumo de CU-hora do projeto Neon (API
+`/projects/bold-credit-22972289`, `compute_time_seconds`) no dia 03/10 e por
+uma semana. Se a projeção do mês passar de ~80 CU-hora, achar o caminho que
+ainda acorda o banco antes que a cota de 100 acabe. Depois da semana, com ok:
+apagar o projeto da Vercel e o Supabase.
