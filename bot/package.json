@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1131.0",
+    "@aws-sdk/client-ssm": "^3.1145.0",
     "@laihoe/demoparser2": "^0.42.0",
     "dotenv": "^17.4.2",
     "globaloffensive": "^3.3.0",
