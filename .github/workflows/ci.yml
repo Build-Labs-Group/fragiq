@@ -54,4 +54,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:aws
-      - run: test -x .aws/site/run.sh && test -f .aws/site/server.js && du -sh .aws/site
+      - run: test -x .aws/site/run.sh && test -f .aws/site/server.js && unzip -Z .aws/site.zip run.sh | grep -q "^-rwxr-xr-x" && du -sh .aws/site .aws/site.zip

@@ -13,12 +13,15 @@
  * fictícia basta, e nenhum segredo entra no build. Com `FRAGIQ_PULAR_BUILD=1`
  * só refaz a cópia (útil depois de um build manual).
  *
- * Rode no Linux (a esteira roda no ubuntu): o zip leva o bit de execução do
- * `run.sh`, que o Windows não grava.
+ * No fim gera `.aws/site.zip`, que é o que a pilha publica. O zip é feito
+ * aqui, e não pelo CDK, para o `run.sh` sair executável (0755) em qualquer
+ * máquina: o Windows não grava o bit de execução, e sem ele a Lambda não sobe.
  */
 import { execSync } from "node:child_process";
-import { chmodSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { chmodSync, cpSync, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { finished } from "node:stream/promises";
+import yazl from "yazl";
 import { fileURLToPath } from "node:url";
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -62,4 +65,23 @@ const runSh = [
 writeFileSync(join(destino, "run.sh"), runSh);
 chmodSync(join(destino, "run.sh"), 0o755);
 
-console.log(`[construir] pacote do site em ${destino}`);
+/** Todos os arquivos da pasta, com caminho relativo e barras `/`. */
+function arquivos(pasta) {
+  return readdirSync(pasta, { recursive: true, withFileTypes: true })
+    .filter((d) => d.isFile() || d.isSymbolicLink())
+    .map((d) => join(d.parentPath, d.name));
+}
+
+const zip = new yazl.ZipFile();
+const caminhoDoZip = join(raiz, ".aws", "site.zip");
+rmSync(caminhoDoZip, { force: true });
+const saida = createWriteStream(caminhoDoZip);
+zip.outputStream.pipe(saida);
+for (const arquivo of arquivos(destino).sort()) {
+  const nome = relative(destino, arquivo).split("\\").join("/");
+  zip.addFile(arquivo, nome, { mode: nome === "run.sh" ? 0o100755 : 0o100644, mtime: new Date(0) });
+}
+zip.end();
+await finished(saida);
+
+console.log(`[construir] pacote do site em ${destino} e ${caminhoDoZip} (${(statSync(caminhoDoZip).size / 1e6).toFixed(1)} MB)`);

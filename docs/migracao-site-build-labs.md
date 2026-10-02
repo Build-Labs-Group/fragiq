@@ -293,8 +293,13 @@ e o banco depois, com D2 se a meta é custo zero ou D1 se o Murilo aceitar
    (mesmo lock, mesma tabela, checksum SHA-256 com LF). Depois da primeira
    migração aplicada por ela, rode `npx prisma migrate status` contra o banco
    para confirmar "up to date".
-5. **Deploy só pelo Linux:** o `run.sh` precisa do bit de execução no zip.
-   Publique pela esteira, não do Windows.
+5. **Esteira e repositório público:** o GitHub não deixa um repositório
+   público (`fragiq`) chamar o workflow de um privado (`infra-compartilhada`):
+   o `publicar` falha antes de rodar ("workflow file issue"). Enquanto o Murilo
+   não decide (deixar o `fragiq` privado, ou a esteira pública), a pilha se
+   publica da máquina com `AWS_PROFILE=buildlabs npx cdk deploy` em `infra/`.
+   O zip do site sai de `construir.mjs` com o `run.sh` em 0755, então isso
+   funciona também no Windows.
 
 ## 7. O que depende de quem
 
