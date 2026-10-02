@@ -73,7 +73,9 @@ logados ao mesmo tempo**.
 4. **Segredo:** copiar `fragiq/bot` (conta pessoal) para `/fragiq/prod/bot`
    sem que o valor passe pelo chat nem por log (skill `aws-secrets-manager`,
    de stdin para stdin). Conferir só as **chaves** do JSON e o hash do valor
-   nas duas pontas.
+   nas duas pontas. O `STEAM_BOT_ACCOUNT`, que na EC2 antiga
+   ficava no `run.sh` do servidor, entra no mesmo JSON (o `config.ts` lê o
+   parâmetro antes do ambiente), copiado do `docker inspect` do container antigo.
 5. **Virada** (~2 min sem bot): `docker update --restart=no` e `docker stop`
    na EC2 antiga, depois `INICIAR=1 ./deploy.sh` na nova. O `pending_captures` fica no site,
    então nada se perde nesse intervalo.
@@ -109,8 +111,7 @@ Esse é um trabalho à parte e entra junto com a ida do site para a Cloudflare
 ## 5. O que depende de quem
 
 **Murilo**
-- [ ] Ok do custo (~US$ 4,30/mês do crédito até 31/12; zero em dinheiro).
-- [ ] `aws login --profile murilosantoseduardo`, que expirou e é preciso para
-      ler a instância antiga e copiar o segredo.
+- [x] Ok do custo (02/10: ~US$ 4,62/mês do crédito até 31/12; zero em dinheiro).
+- [x] `aws login --profile murilosantoseduardo` renovado em 02/10.
 - [ ] Jogar uma partida de CS2 depois da virada (ou pedir para um amigo do bot)
       para a conferência de ponta a ponta.

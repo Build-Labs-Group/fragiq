@@ -44,9 +44,19 @@ COMANDO=$(aws_ ssm send-command --instance-ids "$INSTANCIA" --document-name AWS-
   --comment "fragiq bot $VERSAO" --parameters "$PARAMETROS" --query Command.CommandId --output text)
 echo "Comando $COMANDO na $INSTANCIA; esperando..."
 
+# Logo depois do send-command a invocação pode ainda não existir: tolera
+# algumas falhas seguidas, e depois para com o erro real (credencial vencida,
+# permissão, rede) em vez de esperar para sempre.
+FALHAS=0
 while true; do
-  STATUS=$(aws_ ssm get-command-invocation --command-id "$COMANDO" --instance-id "$INSTANCIA" \
-    --query Status --output text 2> /dev/null || echo Pending)
+  if STATUS=$(aws_ ssm get-command-invocation --command-id "$COMANDO" --instance-id "$INSTANCIA" \
+    --query Status --output text 2> "$TEMP/erro"); then
+    FALHAS=0
+  else
+    FALHAS=$((FALHAS + 1))
+    if [ "$FALHAS" -ge 6 ]; then cat "$TEMP/erro" >&2; exit 1; fi
+    STATUS=Pending
+  fi
   case "$STATUS" in Pending | InProgress | Delayed) sleep 10 ;; *) break ;; esac
 done
 aws_ ssm get-command-invocation --command-id "$COMANDO" --instance-id "$INSTANCIA" \
