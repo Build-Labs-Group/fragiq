@@ -17,7 +17,7 @@ import { type Ambiente, LAYER_DO_ADAPTADOR, tagsDaEmpresa, ZONA } from "./ambien
 
 export interface SiteProps extends StackProps {
   ambiente: Ambiente;
-  /** Pasta montada por `scripts/aws/construir.mjs` (`.aws/site`), com `run.sh` e `server.js`. */
+  /** Zip montado por `scripts/aws/construir.mjs` (`.aws/site.zip`, com `run.sh` executável), ou uma pasta nos testes. */
   pacoteDoSite: string;
 }
 

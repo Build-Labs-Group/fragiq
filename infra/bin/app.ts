@@ -15,7 +15,7 @@ new SiteStack(app, ambiente.pilha, {
   env: { account: CONTA, region: REGIAO },
   description: "Site do FragIQ: Next na Lambda, HTTP API com dominio na Cloudflare, agenda diaria e migracoes",
   ambiente,
-  pacoteDoSite: fileURLToPath(new URL("../../.aws/site", import.meta.url)),
+  pacoteDoSite: fileURLToPath(new URL("../../.aws/site.zip", import.meta.url)),
 });
 
 for (const [chave, valor] of Object.entries(tagsDaEmpresa(ambiente.nome))) Tags.of(app).add(chave, valor);
