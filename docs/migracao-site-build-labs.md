@@ -1,9 +1,10 @@
 # Migração do site para a conta da Build Labs
 
 Data: 2026-10-02 · Situação: **site virado para a AWS em 02/10/2026 às
-17:06 UTC** (DNS de `fragiq.buildlabs.com.br`). Banco: veja a parte 8
-(resultado, volta e o que falta). A Vercel e o Supabase ficam intactos
-como volta por uma semana. As partes 1 a 7 são o plano como foi escrito.
+17:06 UTC** (DNS de `fragiq.buildlabs.com.br`) e **banco no Neon desde as
+21:27 UTC** (D2). Resultado, volta e o que falta na parte 8. A Vercel e o
+Supabase ficam intactos como volta por uma semana. As partes 1 a 7 são o
+plano como foi escrito.
 
 O site (`fragiq.buildlabs.com.br`) roda hoje na **Vercel** (Hobby) e grava num
 Postgres do **Supabase**. Os segredos vêm de `cogniflow/tenants/fragiq`, no
@@ -384,3 +385,48 @@ lendo o Supabase. Enquanto o banco for o Supabase, nada se perde.
   o Supabase deixa de ser cópia fiel para uma volta tardia.
 - Sem deploy da Vercel desde a transferência do repositório: o painel dela
   mostra o bot "parado" entre os turnos do repouso.
+
+### Medição do D2 (20:50–21:20)
+
+`scripts/banco/medir.ts --minutos 30 --passo 60` no Supabase, com o bot já em
+repouso (fragiq#16): **0,5 consulta/min** (antes do D2: 35,2). Dessas, 0,3/min
+são o `cron_runs` do `/api/health`, chamado a cada ~3 min por um monitor de
+fora no endereço da **Vercel** (`fragiq-rouge.vercel.app`; log da Vercel, 20
+chamadas em 1 h; nenhum repositório da Build Labs chama). A Vercel continua no
+Supabase, então essas chamadas não acordam o Neon. O resto (~0,2/min) é o bot
+pela AWS: `steam_messages`, `pending_captures`, `matches` e o `bot_status`
+quando há trabalho. A estimativa do script (Neon acordado ~93%, ~170 CU-hora)
+conta o monitor da Vercel; a prova de verdade é o consumo do projeto Neon.
+
+### Banco: Supabase → Neon (21:26–21:28)
+
+Neon `fragiq` = `bold-credit-22972289` (aws-us-east-2, plano grátis, branch
+`main`, endpoint `ep-lively-wave-b5pd5hff`, 0,25 CU, suspensão padrão de 5
+min). Schema aplicado às 17:11 com `prisma migrate deploy` das 39 migrações de
+produção.
+
+| Hora (UTC, relógio do host) | Passo |
+|---|---|
+| 21:25 | ensaio sem `--sim`: Neon vazio, mesmo schema, 28 tabelas na ordem das FKs |
+| 21:26:27 | bot parado (`docker stop fragiq-bot` no host, pelo SSM) |
+| 21:26 | `copiar.ts --sim`: cópia em 13,3 s, conferência igual (linhas, checksums, datas máximas, sequences, índices, restrições, enums) |
+| 21:27 | `/fragiq/prod/site` versão 1 → **2** (`DATABASE_URL` com pooler e `DIRECT_DATABASE_URL` do Neon); `SEGREDO_RELIDO` nas Lambdas `fragiq-site` e `fragiq-migracoes` para ambientes novos lerem a versão 2 |
+| 21:27:40 | bot religado (`docker start`); 73 s parado. Na volta ele já reportou o fim de uma partida e agendou a captura |
+
+Conferência depois (`conferir.ts`, Supabase → Neon): **nenhuma diferença de
+estrutura, nenhuma tabela com menos linhas no Neon**, e só linhas novas do
+bot no Neon (bot_logs 6674 → 6687, bot_observations 242 → 244,
+pending_captures 0 → 2, sync_runs 975 → 977). O Supabase ficou com as mesmas
+contagens do momento da cópia: nada mais grava lá pela AWS.
+`/api/health` na AWS: 200, `dbLatencyMs` 11 a 76.
+
+**Volta do banco:** `/fragiq/prod/site` de volta para a versão 1 (Supabase) e
+renovar as duas Lambdas. O que foi gravado no Neon depois das 21:27 não volta
+sozinho; a volta depois de horas pede uma cópia no sentido contrário, numa
+janela igual.
+
+**A acompanhar:** consumo de CU-hora do projeto Neon (API
+`/projects/bold-credit-22972289`, `compute_time_seconds`) no dia 03/10 e por
+uma semana. Se a projeção do mês passar de ~80 CU-hora, achar o caminho que
+ainda acorda o banco antes que a cota de 100 acabe. Depois da semana, com ok:
+apagar o projeto da Vercel e o Supabase.
