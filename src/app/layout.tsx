@@ -30,8 +30,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
-        <Analytics />
-        <SpeedInsights />
+        {/* Os scripts da Vercel só existem na Vercel (`/_vercel/...`); fora dela dariam 404 em toda página. */}
+        {process.env.FRAGIQ_ALVO !== "aws" ? (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        ) : null}
       </body>
     </html>
   );
