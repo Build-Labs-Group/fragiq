@@ -25,3 +25,33 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+
+  # A infraestrutura da AWS (infra/) é um pacote à parte: typecheck e testes
+  # da pilha (sintetiza com um pacote de site falso, sem next build) e das Lambdas.
+  infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - run: npm run verificar
+
+  # O pacote da Lambda: build standalone com FRAGIQ_ALVO=aws, como a esteira faz.
+  build-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build:aws
+      - run: test -x .aws/site/run.sh && test -f .aws/site/server.js && du -sh .aws/site

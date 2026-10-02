@@ -18,6 +18,9 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      // pacote próprio, com typecheck e testes dele (infra/package.json)
+      "infra/**",
+      ".aws/**",
     ],
   },
 ];

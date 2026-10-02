@@ -51,7 +51,7 @@ Steamworks são de comércio, para publishers. A Web API é 100% *pull*, então 
 |---|---|---|
 | `LOGIN` | `api/auth/steam/callback` | no login, se os dados estiverem > 6 h velhos |
 | `MANUAL` | `POST /api/sync` | botão "Sincronizar", com cooldown de 2 min |
-| `CRON` | `GET /api/cron/sync` | diário às 05:00 UTC (`vercel.json`) |
+| `CRON` | `GET /api/cron/sync` | diário às 05:00 UTC (`vercel.json`; na AWS, EventBridge Scheduler → `infra/lambdas/agenda.ts`) |
 
 O cron é o que importa: sem ele a série só tem pontos nos dias em que a pessoa
 abriu o site, e uma plataforma de evolução com buracos não serve. Em produção
@@ -292,7 +292,8 @@ que desliga câmera, microfone, localização, pagamento e USB, e
 `frame-ancestors 'none'` + `X-Frame-Options: DENY` (nenhuma tela é feita para
 iframe; sem isso, seguir, sincronizar e as configurações de privacidade
 poderiam ser clicados por baixo de outra página). `x-powered-by` está
-desligado. O HSTS vem da Vercel.
+desligado. O HSTS vem da Vercel; no build da AWS (`FRAGIQ_ALVO=aws`) o
+`next.config.ts` o põe.
 
 A CSP completa ainda está em **`Content-Security-Policy-Report-Only`**: o
 navegador avisa no console o que ela bloquearia e não bloqueia nada. Ela
@@ -366,6 +367,15 @@ leitura dentro de uma requisição (`src/lib/segredos.ts`; não no boot — o
 token OIDC é um header da requisição). O que precisa ficar na
 Vercel, e o passo a passo da AWS, estão em [docs/segredos.md](docs/segredos.md).
 
+## Saída da Vercel
+
+O site está indo para a conta AWS da Build Labs (Lambda + HTTP API, domínio
+na Cloudflare), e o banco do Supabase para o Neon. Plano, custos, ordem dos
+passos e volta: [docs/migracao-site-build-labs.md](docs/migracao-site-build-labs.md).
+O código está em `infra/` (CDK, pilha `Fragiq-Prod`), `aws/` (boot da Lambda),
+`scripts/aws/construir.mjs` (`npm run build:aws`) e `scripts/banco/` (cópia e
+conferência do banco). Na Vercel nada muda até a virada.
+
 ## O bot é nosso, a Web API é do cogniflow
 
 Decisão de 14/09/2026: o cogniflow não fala o protocolo do cliente Steam
@@ -394,7 +404,8 @@ src/lib/
   modo.ts / modo-servidor.ts  o modo como navegação: abas, URL, cookie
   pendencias.ts               o que falta compartilhar, e o aviso no chat
   analise-texto.ts            manchete / parágrafos / ação da resposta do analista
-  segredos.ts                 segredos do Secrets Manager via OIDC, preguiçosos
+  segredos.ts                 segredos do SSM (AWS) ou do Secrets Manager via OIDC (Vercel), preguiçosos
+  pg-config.ts                SSL do pg (Prisma e migrações da AWS)
   steam/openid.ts             OpenID 2.0
   steam/api.ts                a Steam como capabilities steam.* do cogniflow
   steam/sync.ts               ingestão com gate de playtime

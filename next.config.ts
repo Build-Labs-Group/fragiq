@@ -44,10 +44,29 @@ const cabecalhosDeSeguranca = [
   { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
 ];
 
+/**
+ * Build para a AWS (Lambda + Lambda Web Adapter, ver docs/migracao-site-build-labs.md):
+ * `FRAGIQ_ALVO=aws next build` gera `.next/standalone`, um servidor Node com
+ * só as dependências que as rotas usam. Na Vercel a variável não existe e o
+ * build continua exatamente o de antes.
+ */
+const paraAws = process.env.FRAGIQ_ALVO === "aws";
+
+/**
+ * Na Vercel o HSTS vem da plataforma; na AWS ninguém o põe, então ele vai
+ * aqui, com o mesmo valor que a Vercel manda (2 anos, sem subdomínios: a
+ * zona buildlabs.com.br tem outros sites).
+ */
+const hsts = { key: "Strict-Transport-Security", value: "max-age=63072000" };
+
 const nextConfig: NextConfig = {
+  // Todas as imagens já são `unoptimized` (vêm prontas dos CDNs da Steam); sem
+  // otimizador, o pacote da Lambda não precisa do sharp, que é binário nativo.
+  // `env` fixa FRAGIQ_ALVO no build, para o layout saber que não está na Vercel.
+  ...(paraAws ? { output: "standalone" as const, images: { unoptimized: true }, env: { FRAGIQ_ALVO: "aws" } } : {}),
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/(.*)", headers: cabecalhosDeSeguranca }];
+    return [{ source: "/(.*)", headers: paraAws ? [...cabecalhosDeSeguranca, hsts] : cabecalhosDeSeguranca }];
   },
 };
 
