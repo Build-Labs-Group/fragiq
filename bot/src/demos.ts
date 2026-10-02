@@ -9,6 +9,7 @@ import { gzipSync } from "node:zlib";
 import unbzip2 from "unbzip2-stream";
 import { config } from "./config.js";
 import { logar } from "./logs.js";
+import type { Ritmo } from "./ritmo.js";
 
 /**
  * Demos: baixar, descomprimir, extrair, entregar.
@@ -31,11 +32,11 @@ const PASTA = join(tmpdir(), "fragiq-demos");
 
 type Pendente = { matchId: string; shareCode: string; demoUrl: string };
 
-export function ligarDemos(clientLogado: () => boolean) {
+export function ligarDemos(clientLogado: () => boolean, ritmo: Ritmo) {
   let rodando = false;
 
   async function rodada() {
-    if (rodando || !clientLogado()) return;
+    if (rodando || !clientLogado() || !ritmo.podeChamar("demos")) return;
     rodando = true;
     try {
       const res = await fetch(config.demosUrl, { headers: { authorization: `Bearer ${config.webhookSecret}` } });
@@ -44,6 +45,8 @@ export function ligarDemos(clientLogado: () => boolean) {
         return;
       }
       const { demos = [] } = (await res.json()) as { demos?: Pendente[] };
+      // Uma demo por rodada: com mais na fila, a próxima rodada também precisa do site.
+      if (demos.length) ritmo.acordar("demos na fila", 2 * RODADA_MS);
       for (const p of demos) await processar(p);
     } catch (err) {
       logar("ERROR", `Fila de demos falhou: ${err instanceof Error ? err.message : err}`);

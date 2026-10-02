@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { carregarPainel, FUSO } from "@/lib/admin-dados";
+import { estadoDoBot, haQuanto, REPOUSO_DO_BOT_MS } from "@/lib/saude-do-bot";
 import { SiteHeader } from "@/components/site-header";
 import { BarrasPorDia } from "@/components/barras-por-dia";
 import { cn } from "@/lib/utils";
@@ -33,9 +34,9 @@ export default async function AdminPage() {
 
   const { totais, usuarios, porDia, funil, saude, eventos, bot } = painel;
   const tickHa = saude.bot ? Date.now() - saude.bot.ultimoTickEm.getTime() : null;
-  const botVivo = tickHa !== null && tickHa < 2 * 60_000;
-  // Três estados, não dois: o processo pode estar vivo e sem sessão na Steam.
-  const botDeslogado = botVivo && saude.bot !== null && !saude.bot.logado;
+  const estadoBot = estadoDoBot(saude.bot && tickHa !== null ? { tickHaMs: tickHa, logado: saude.bot.logado } : null);
+  const botVivo = estadoBot === "vivo" || estadoBot === "repouso";
+  const botDeslogado = estadoBot === "deslogado";
   const foraHa = saude.bot?.desconectadoDesde ? Math.round((Date.now() - saude.bot.desconectadoDesde.getTime()) / 60_000) : null;
 
   return (
@@ -68,19 +69,22 @@ export default async function AdminPage() {
           />
         </section>
 
-        <Secao titulo="Saúde" sub="O bot conta como está a cada 30 s; o resto são as filas que ele e o site compartilham.">
+        <Secao
+          titulo="Saúde"
+          sub={`O bot conta como está a cada 30 s quando há trabalho e a cada ${REPOUSO_DO_BOT_MS / 60_000} min em repouso; o resto são as filas que ele e o site compartilham.`}
+        >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Tile
               rotulo="Bot"
-              valor={botDeslogado ? "deslogado" : botVivo ? "vivo" : saude.bot ? "parado" : "nunca"}
+              valor={estadoBot === "repouso" ? "vivo, em repouso" : estadoBot}
               nota={
                 botDeslogado && saude.bot
                   ? `fora da Steam há ${foraHa ?? 0} min · ${saude.bot.motivo ?? "sem motivo registrado"}`
                   : saude.bot
-                    ? `tick há ${Math.round((tickHa ?? 0) / 1000)} s · ${saude.bot.amigos} amigos · GC ${saude.bot.gcConectado ? "ok" : "fora"}`
+                    ? `tick ${haQuanto(tickHa ?? 0)} · ${saude.bot.amigos} amigos · GC ${saude.bot.gcConectado ? "ok" : "fora"}`
                     : "nenhum tick recebido"
               }
-              alerta={!botVivo || botDeslogado}
+              alerta={!botVivo}
             />
             <Tile
               rotulo="Capturas pendentes"

@@ -8,10 +8,26 @@ import { supervisionarConexao } from "./conexao.js";
 import { despedirLogs, ligarLogs, logar } from "./logs.js";
 import { ligarPrecos } from "./precos.js";
 import { ligarDemos } from "./demos.js";
+import { criarRitmo, opcoesDoAmbiente } from "./ritmo.js";
+
+/**
+ * Atento quando há trabalho, em repouso quando não há (ritmo.ts): é o que
+ * deixa o banco do site dormir. Toda chamada ao site passa por aqui.
+ */
+const opcoesDoRitmo = opcoesDoAmbiente(process.env);
+const ritmo = criarRitmo({
+  ...opcoesDoRitmo,
+  aoMudar: (atento, motivo) =>
+    console.log(
+      atento
+        ? `Atento (${motivo}): o site é chamado no ritmo normal.`
+        : `Em repouso (${motivo}): o site é chamado uma vez a cada ${Math.round(opcoesDoRitmo.repousoMs / 60_000)} min.`,
+    ),
+});
 
 // Antes de qualquer outra linha: tudo o que o bot disser a partir daqui vai
-// também para o painel do site.
-ligarLogs({ url: config.logsUrl, secret: config.webhookSecret });
+// também para o painel do site (no repouso, junto do turno).
+ligarLogs({ url: config.logsUrl, secret: config.webhookSecret, podeEnviar: () => ritmo.podeChamar("logs") });
 
 /**
  * Bot de presença.
@@ -127,6 +143,7 @@ client.on("steamGuard", async (domain, callback, lastCodeWrong) => {
 });
 
 client.on("loggedOn", () => {
+  ritmo.acordar("login na Steam");
   console.log(`Conectado como ${client.steamID?.getSteamID64()}`);
   client.setPersona(SteamUser.EPersonaState.Online);
 });
@@ -145,6 +162,8 @@ client.on("friendRelationship", (steamID, relationship) => {
   if (relationship === SteamUser.EFriendRelationship.RequestRecipient) {
     if (!config.autoAccept) return console.log(`Pedido de amizade de ${id} (ignorado)`);
     client.addFriend(steamID);
+    // Amigo novo costuma entrar no site em seguida (login, partidas): o site vai ter trabalho.
+    ritmo.acordar("amigo novo");
     console.log(`Amizade aceita: ${id}`);
     return;
   }
@@ -248,6 +267,8 @@ async function avisar(steamId: string, motivo: "terminou a partida" | "saiu do C
   const ctx = contexto.get(steamId);
   const traceId = crypto.randomUUID();
   const event = motivo === "terminou a partida" ? "match_ended" : "left_game";
+  // A captura desta partida tenta por ~32 min (capturas.ts); a janela padrão cobre todas.
+  ritmo.acordar(motivo);
   logar(
     "INFO",
     `${motivo}` + (ctx?.map ? ` (${ctx.mode ?? "?"} em ${ctx.map}${ctx.score ? ` ${ctx.score}` : ""})` : ""),
@@ -271,11 +292,15 @@ async function avisar(steamId: string, motivo: "terminou a partida" | "saiu do C
 
 /* ---------------------------------- tick ---------------------------------- */
 
+/** O último estado que o site recebeu: se mudou (caiu da Steam, GC, amigos), o tick sai na hora, mesmo em repouso. */
+let ultimoEstadoEnviado = "";
+
 /**
  * O relógio das capturas: o site processa o que venceu; nós só chamamos.
  *
  * Bate mesmo deslogado da Steam — é o que separa "o bot morreu" de "o bot
- * está vivo e sem sessão" no painel, e leva junto o motivo da queda.
+ * está vivo e sem sessão" no painel, e leva junto o motivo da queda. Em
+ * repouso, uma vez por turno (ritmo.ts), ou na hora se o estado mudou.
  */
 async function tick() {
   try {
@@ -283,17 +308,25 @@ async function tick() {
     const amigos = estado.logado
       ? Object.values(client.myFriends).filter((rel) => rel === SteamUser.EFriendRelationship.Friend).length
       : undefined;
+    const gc = partidas.gcConectado();
+    const assinatura = JSON.stringify({ logado: estado.logado, gc, amigos: amigos ?? null });
+    if (assinatura === ultimoEstadoEnviado && !ritmo.podeChamar("tick")) return;
     const res = await fetch(config.tickUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json", authorization: `Bearer ${config.webhookSecret}` },
-      body: JSON.stringify({ amigos, gc: partidas.gcConectado(), iniciadoEm, ...estado }),
+      // `ritmo` diz ao site até quando o bot está atento; o site de antes ignora o campo.
+      body: JSON.stringify({ amigos, gc, iniciadoEm, ...estado, ritmo: ritmo.estado() }),
     });
     if (!res.ok) {
       console.warn(`Tick: ${res.status}`);
       return;
     }
+    ultimoEstadoEnviado = assinatura;
     const r = (await res.json()) as { processadas: number; gravadas: number; reagendadas: number; desistidas: number };
-    if (r.processadas > 0) console.log(`Tick: ${r.gravadas} gravada(s), ${r.reagendadas} reagendada(s), ${r.desistidas} desistida(s)`);
+    if (r.processadas > 0) {
+      ritmo.acordar("capturas na fila");
+      console.log(`Tick: ${r.gravadas} gravada(s), ${r.reagendadas} reagendada(s), ${r.desistidas} desistida(s)`);
+    }
   } catch (err) {
     console.error("Tick falhou:", err);
   }
@@ -315,8 +348,11 @@ type Mensagem = { id: string; steamId: string; texto: string };
 
 let entregando = false;
 
+/** Depois de uma mensagem na fila, outras costumam vir logo (a análise da sessão chega pelo cogniflow). */
+const JANELA_DA_FILA_MS = 10 * 60_000;
+
 async function entregarFila() {
-  if (entregando || !client.steamID) return;
+  if (entregando || !client.steamID || !ritmo.podeChamar("mensagens")) return;
   entregando = true;
   try {
     const res = await fetch(config.outboxUrl, {
@@ -327,6 +363,7 @@ async function entregarFila() {
       return;
     }
     const { mensagens } = (await res.json()) as { mensagens: Mensagem[] };
+    if (mensagens.length) ritmo.acordar("mensagens na fila", JANELA_DA_FILA_MS);
     for (const m of mensagens) await entregar(m);
   } catch (err) {
     console.error("Fila falhou:", err);
@@ -365,9 +402,9 @@ async function entregar(m: Mensagem) {
 }
 
 const filaTimer = setInterval(() => void entregarFila(), config.outboxPollMs);
-const partidas = ligarPartidas(client);
-const precos = ligarPrecos(() => Boolean(client.steamID));
-const demos = ligarDemos(() => Boolean(client.steamID));
+const partidas = ligarPartidas(client, ritmo);
+const precos = ligarPrecos(() => Boolean(client.steamID), ritmo);
+const demos = ligarDemos(() => Boolean(client.steamID), ritmo);
 
 /* ------------------------------- encerramento ------------------------------ */
 

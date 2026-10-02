@@ -34,6 +34,30 @@ Além do tick, o bot busca duas filas do site: mensagens de chat
 (`/api/bot/outbox`) e share codes para perguntar ao Game Coordinator
 (`/api/bot/partidas`).
 
+## Atento ou em repouso (para o banco do site dormir)
+
+Cada chamada ao site é uma consulta no Postgres, e o Neon grátis só cabe se
+o banco puder dormir (desliga depois de 5 min sem consulta). Por isso o bot
+tem dois ritmos (`src/ritmo.ts`, correção D2 de
+`docs/migracao-site-build-labs.md`):
+
+- **Atento**: o ritmo acima (tick 30 s, filas 20 s, demos 5 min, logs 10 s).
+  Vale na subida e por 35 min (`BOT_JANELA_MS`) depois de um fim de
+  partida, de uma captura processada, de um amigo novo ou do login na
+  Steam, e por 10 min depois de uma mensagem, partida ou demo na fila. Os
+  35 min cobrem todas as tentativas de captura (90 s + 2, 4, 8, 16 min).
+- **Repouso**: sem nada disso, cada laço chama o site uma vez por turno de
+  30 min (`BOT_REPOUSO_MS`). Os turnos são do relógio (:00 e :30), então o
+  banco acorda uma vez por turno, não uma por laço. Os logs esperam o turno
+  (lote cheio e a despedida saem na hora). O tick sai na hora, mesmo em
+  repouso, se o bot caiu da Steam, perdeu o GC ou mudou o número de amigos.
+
+O que nasce no site sem o bot saber (alguém sincroniza na tela, o cron das
+05:00) espera no máximo um turno. O painel lê o tick com isso em mente:
+até 35 min sem sinal é "vivo, em repouso"; depois, "parado".
+`BOT_REPOUSO_MS=0` desliga o repouso (volta ao ritmo antigo sem mudar
+código).
+
 ## Ficar logado é política do bot, não da biblioteca
 
 `src/conexao.ts` supervisiona a sessão: o cliente nasce com

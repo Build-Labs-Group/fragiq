@@ -70,7 +70,7 @@ const GRUPO = {
   resumo:
     "Sua evolução no CS2, sessão a sessão — não só o total. Beta gratuito. " +
     "Login pela Steam (só o SteamID), só leitura do que já é público, nada na conta é alterado. " +
-    "https://fragiq-rouge.vercel.app",
+    "https://fragiq.buildlabs.com.br",
 };
 
 async function criar(cookies: string[], sessionID: string, step = "1") {
@@ -107,7 +107,7 @@ const ANUNCIO = {
 
 É gratuito e está em beta. Estamos procurando jogadores para testar e dizer o que falta.
 
-Endereço: fragiq-rouge.vercel.app (o mesmo que está na descrição do grupo)
+Endereço: fragiq.buildlabs.com.br (o mesmo que está na descrição do grupo)
 
 Como funciona, sem letra miúda:
 - Login pela própria Steam (OpenID). Recebemos só o SteamID: nunca senha, e-mail ou Steam Guard.
