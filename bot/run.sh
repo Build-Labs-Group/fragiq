@@ -7,10 +7,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-docker compose build --pull
+# A imagem sai do buildx do host (o 0.12 do Amazon Linux); o compose v5 só sobe
+# o container, porque o build dele pede buildx 0.17 ou mais novo.
+docker buildx build --pull --load -t fragiq-bot .
 rodando=$(docker inspect -f '{{.State.Running}}' fragiq-bot 2>/dev/null || echo false)
 if [ "${INICIAR:-0}" = 1 ] || [ "$rodando" = true ]; then
-  docker compose up -d --remove-orphans
+  docker compose up -d --no-build --remove-orphans
   docker compose ps
 else
   echo "Imagem pronta; o bot NAO foi iniciado. Para ligar: INICIAR=1 no deploy.sh."
