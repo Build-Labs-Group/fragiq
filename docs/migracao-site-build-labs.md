@@ -295,11 +295,17 @@ e o banco depois, com D2 se a meta é custo zero ou D1 se o Murilo aceitar
    para confirmar "up to date".
 5. **Esteira e repositório público:** o GitHub não deixa um repositório
    público (`fragiq`) chamar o workflow de um privado (`infra-compartilhada`):
-   o `publicar` falha antes de rodar ("workflow file issue"). Enquanto o Murilo
-   não decide (deixar o `fragiq` privado, ou a esteira pública), a pilha se
-   publica da máquina com `AWS_PROFILE=buildlabs npx cdk deploy` em `infra/`.
-   O zip do site sai de `construir.mjs` com o `run.sh` em 0755, então isso
-   funciona também no Windows.
+   o `publicar` falhava antes de rodar ("workflow file issue"). Resolvido em
+   02/10 sem mudar a visibilidade de nada (infra-compartilhada#10): o
+   `fragiq` está registrado com `publicacaoPropria`, e o
+   `.github/workflows/publicar.yml` daqui é a cópia do modelo
+   `modelos/publicar-repositorio-publico.yml` de lá. O corretor aceita esse
+   arquivo só neste repositório, na `main`, em push ou execução manual, como
+   workflow principal, e nunca como prévia. O log do job é público: as
+   dependências se instalam antes da credencial, que sai mascarada. Na falta
+   da esteira, a pilha ainda se publica da máquina com
+   `AWS_PROFILE=buildlabs npx cdk deploy` em `infra/` (o zip sai com o
+   `run.sh` em 0755, então funciona também no Windows).
 
 ## 7. O que depende de quem
 
