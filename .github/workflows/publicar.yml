@@ -1,0 +1,20 @@
+# Publica o site na conta da Build Labs pela esteira da infra-compartilhada:
+# push na main vira a pilha Fragiq-Prod (Lambda + HTTP API). Sem prévia por
+# PR: o site lê o banco de produção. O cdk.json de infra/ monta o pacote do
+# site (scripts/aws/construir.mjs) antes de sintetizar.
+# Plano e volta: docs/migracao-site-build-labs.md.
+name: publicar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    uses: Build-Labs-Group/infra-compartilhada/.github/workflows/publicar.yml@main
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      diretorio: infra
