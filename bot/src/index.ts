@@ -48,8 +48,9 @@ const emPartida = new Map<string, boolean>();
 
 /**
  * As credenciais são relidas a cada logon: em produção o refresh token mora
- * no Secrets Manager e pode ter sido renovado desde o boot. Sem token, a
- * senha (só no primeiro login, local, com Steam Guard no terminal).
+ * no Parameter Store (ou no Secrets Manager, na volta) e pode ter sido
+ * renovado desde o boot. Sem token, a senha (só no primeiro login, local,
+ * com Steam Guard no terminal).
  */
 async function credenciais() {
   const token = (secretId ? (await lerSegredos().catch(() => ({}) as Record<string, string>)).STEAM_BOT_REFRESH_TOKEN : null) || config.refreshToken;
@@ -82,7 +83,7 @@ client.on("refreshToken", (token: string) => {
   if (secretId) {
     gravarRefreshToken(token).then(
       () => console.log(`Refresh token renovado gravado em ${secretId}.`),
-      (err) => console.error("Falha ao gravar o refresh token no Secrets Manager:", err),
+      (err) => console.error(`Falha ao gravar o refresh token em ${secretId}:`, err),
     );
     return;
   }

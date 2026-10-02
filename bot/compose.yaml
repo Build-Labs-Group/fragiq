@@ -1,0 +1,23 @@
+# Bot de presença no host compartilhado da Build Labs (pilha
+# InfraCompartilhada-Host; infra-compartilhada/docs/host-compartilhado.md).
+# Quem sobe: run.sh, chamado pelo deploy.sh via `aws ssm send-command`.
+name: fragiq
+
+services:
+  bot:
+    build: .
+    image: fragiq-bot
+    container_name: fragiq-bot
+    # O processo sai em erro sem volta (credencial recusada, 1 h sem sessão) e
+    # conta com o Docker para recriar. `docker stop` continua valendo no reboot.
+    restart: unless-stopped
+    # O host é dividido com outros projetos. O parser de demo chega a ~400 MB
+    # num processo filho; o resto do bot fica em ~150 MB.
+    mem_limit: 900m
+    memswap_limit: 1300m
+    env_file: producao.env
+    environment:
+      # Segredos (refresh token, segredo do webhook) no Parameter Store da
+      # conta da Build Labs, lidos com a role do host pelo IMDSv2.
+      FRAGIQ_SECRET_PARAM: /fragiq/prod/bot
+      AWS_REGION: us-east-2
