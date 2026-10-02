@@ -292,15 +292,16 @@ async function avisar(steamId: string, motivo: "terminou a partida" | "saiu do C
 
 /* ---------------------------------- tick ---------------------------------- */
 
+/** O último estado que o site recebeu: se mudou (caiu da Steam, GC, amigos), o tick sai na hora, mesmo em repouso. */
+let ultimoEstadoEnviado = "";
+
 /**
  * O relógio das capturas: o site processa o que venceu; nós só chamamos.
  *
  * Bate mesmo deslogado da Steam — é o que separa "o bot morreu" de "o bot
- * está vivo e sem sessão" no painel, e leva junto o motivo da queda.
+ * está vivo e sem sessão" no painel, e leva junto o motivo da queda. Em
+ * repouso, uma vez por turno (ritmo.ts), ou na hora se o estado mudou.
  */
-/** O último estado que o site recebeu: se mudou (caiu da Steam, GC, amigos), o tick sai na hora, mesmo em repouso. */
-let ultimoEstadoEnviado = "";
-
 async function tick() {
   try {
     const estado = conexao.estado();
