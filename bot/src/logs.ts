@@ -14,6 +14,10 @@
  *
  * Falha de rede não perde linha: o lote volta para a fila, com teto para
  * a memória não crescer sem fim numa queda longa do site.
+ *
+ * Com o bot em repouso (ritmo.ts), o envio periódico espera o turno
+ * (`podeEnviar`), para uma linha solta não acordar o banco do site. Lote
+ * cheio e a despedida saem na hora.
  */
 
 export type Nivel = "DEBUG" | "INFO" | "WARN" | "ERROR";
@@ -28,6 +32,8 @@ let fila: Linha[] = [];
 let enviando = false;
 let destino: { url: string; secret: string } | null = null;
 let timer: NodeJS.Timeout | null = null;
+/** Se o envio periódico pode chamar o site agora (o ritmo do bot); sem ele, sempre. */
+let podeEnviar: () => boolean = () => true;
 
 const original = { log: console.log, warn: console.warn, error: console.error };
 
@@ -41,7 +47,7 @@ function texto(args: unknown[]): string {
 function enfileirar(linha: Linha) {
   fila.push(linha);
   if (fila.length > TETO) fila = fila.slice(-TETO);
-  if (fila.length >= LOTE) void enviar();
+  if (fila.length >= LOTE) void enviar(true);
 }
 
 export function logar(nivel: Nivel, mensagem: string, extra: { steamId?: string; traceId?: string; dados?: Record<string, unknown> } = {}) {
@@ -52,8 +58,9 @@ export function logar(nivel: Nivel, mensagem: string, extra: { steamId?: string;
 }
 
 /** Liga a captura do console e o envio periódico. Sem destino, só o console. */
-export function ligarLogs(opcoes: { url: string; secret: string } | null) {
-  destino = opcoes;
+export function ligarLogs(opcoes: { url: string; secret: string; podeEnviar?: () => boolean } | null) {
+  destino = opcoes ? { url: opcoes.url, secret: opcoes.secret } : null;
+  if (opcoes?.podeEnviar) podeEnviar = opcoes.podeEnviar;
   for (const [metodo, nivel] of [
     ["log", "INFO"],
     ["warn", "WARN"],
@@ -66,11 +73,14 @@ export function ligarLogs(opcoes: { url: string; secret: string } | null) {
       enfileirar({ nivel, mensagem, em: new Date().toISOString(), ...(steamId ? { steamId } : {}) });
     };
   }
-  if (destino) timer = setInterval(() => void enviar(), INTERVALO_MS);
+  if (destino) timer = setInterval(() => void enviar(false), INTERVALO_MS);
 }
 
-async function enviar() {
+/** Exportado para o teste. `forcar`: lote cheio ou despedida, sai mesmo em repouso. */
+export async function enviar(forcar: boolean) {
   if (!destino || enviando || fila.length === 0) return;
+  // Só gasta o turno do repouso quando há o que mandar.
+  if (!forcar && !podeEnviar()) return;
   enviando = true;
   const lote = fila.splice(0, 500);
   try {
@@ -91,5 +101,5 @@ async function enviar() {
 /** Último envio antes de sair; espera no máximo alguns segundos. */
 export async function despedirLogs() {
   if (timer) clearInterval(timer);
-  await Promise.race([enviar(), new Promise((r) => setTimeout(r, 3000))]);
+  await Promise.race([enviar(true), new Promise((r) => setTimeout(r, 3000))]);
 }

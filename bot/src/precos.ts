@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { logar } from "./logs.js";
+import type { Ritmo } from "./ritmo.js";
 
 /**
  * Preços do Mercado da Comunidade, lidos daqui porque a Steam deixa.
@@ -57,15 +58,17 @@ async function ler(nome: string): Promise<Resultado | "calma"> {
   return { marketHashName: nome, listado: true, menorCents: centavos(d.lowest_price), medianaCents: centavos(d.median_price), volume: volume(d.volume) };
 }
 
-export function ligarPrecos(clientLogado: () => boolean) {
+export function ligarPrecos(clientLogado: () => boolean, ritmo: Ritmo) {
   let rodando = false;
   let espera = RODADA_MS;
   if (!config.precos) return { parar() {} };
 
   async function rodada() {
-    if (rodando || !clientLogado()) return;
+    if (rodando) return;
     rodando = true;
     try {
+      // Dentro do try: o finally reagenda a próxima rodada (antes, sem sessão na primeira, o laço parava).
+      if (!clientLogado() || !ritmo.podeChamar("precos")) return;
       const res = await fetch(config.precosUrl, { headers: { authorization: `Bearer ${config.webhookSecret}` } });
       if (!res.ok) return;
       const { nomes } = (await res.json()) as { nomes: string[] };

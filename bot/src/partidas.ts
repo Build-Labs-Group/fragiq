@@ -3,6 +3,10 @@ import GlobalOffensive, { type MatchInfo } from "globaloffensive";
 import { ShareCode } from "globaloffensive-sharecode";
 import { CS2_APPID, config } from "./config.js";
 import { lerCabecalhoDaDemo } from "./demo-header.js";
+import type { Ritmo } from "./ritmo.js";
+
+/** Depois de uma partida na fila vêm a demo e, às vezes, outra partida da mesma corrente. */
+const JANELA_DA_FILA_MS = 10 * 60_000;
 
 /**
  * A ponte com o Game Coordinator do CS2.
@@ -70,7 +74,7 @@ export function serializavel(valor: unknown): unknown {
 
 const TIMEOUT_MS = 20_000;
 
-export function ligarPartidas(client: SteamUser) {
+export function ligarPartidas(client: SteamUser, ritmo: Ritmo) {
   const csgo = new GlobalOffensive(client);
   let esperando: { matchId: string; resolve: (m: MatchInfo | null) => void } | null = null;
 
@@ -115,7 +119,7 @@ export function ligarPartidas(client: SteamUser) {
   let rodando = false;
 
   async function processarFila() {
-    if (rodando || !csgo.haveGCSession) return;
+    if (rodando || !csgo.haveGCSession || !ritmo.podeChamar("partidas")) return;
     rodando = true;
     try {
       const res = await fetch(config.partidasUrl, {
@@ -126,6 +130,7 @@ export function ligarPartidas(client: SteamUser) {
         return;
       }
       const { partidas, semMapa = [] } = (await res.json()) as { partidas: Pendente[]; semMapa?: SemMapa[] };
+      if (partidas.length || semMapa.length) ritmo.acordar("partidas na fila", JANELA_DA_FILA_MS);
       for (const p of partidas) {
         const resultado = await consultar(p.shareCode);
         console.log(`Partida ${p.shareCode}: ${resultado.status}${resultado.error ? ` (${resultado.error})` : ""}`);
