@@ -9,7 +9,7 @@ primary_region = "gru"
 [env]
   BOT_GRACE_MS = "90000"
   BOT_AUTO_ACCEPT = "true"
-  FRAGIQ_WEBHOOK_URL = "https://fragiq-rouge.vercel.app/api/sync/steam-event"
+  FRAGIQ_WEBHOOK_URL = "https://fragiq.buildlabs.com.br/api/sync/steam-event"
 
 # Sem [http_service]: não há o que servir. Só o processo do steam-user.
 [[vm]]
