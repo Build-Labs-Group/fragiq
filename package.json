@@ -20,10 +20,12 @@
     "recompute:sessions": "tsx scripts/recompute-sessions.ts",
     "recompute:insights": "tsx scripts/recompute-insights.ts",
     "recompute:demos": "tsx scripts/recompute-demos.ts",
-    "assets:cs2": "tsx scripts/extrair-assets-cs2.ts"
+    "assets:cs2": "tsx scripts/extrair-assets-cs2.ts",
+    "build:aws": "node scripts/aws/construir.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.1131.0",
+    "@aws-sdk/client-ssm": "^3.1145.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@vercel/analytics": "^2.0.1",
@@ -44,11 +46,13 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg-copy-streams": "^1.2.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
+    "pg-copy-streams": "^7.0.0",
     "prisma": "^7.10.0",
     "sharp": "^0.35.4",
     "tailwindcss": "^4",
