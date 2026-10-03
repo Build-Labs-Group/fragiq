@@ -14,7 +14,7 @@ const SELOS = {
 export function Selo({ tipo, className }: { tipo: keyof typeof SELOS; className?: string }) {
   const s = SELOS[tipo];
   return (
-    <span className={cn("hud rounded-full border px-2 py-0.5 text-[10px]", s.classe, className)}>
+    <span className={cn("hud whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px]", s.classe, className)}>
       {s.rotulo}
     </span>
   );

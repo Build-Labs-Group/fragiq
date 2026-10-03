@@ -19,7 +19,7 @@ export default async function ComparacaoPage({ params }: { params: Promise<{ ste
     <div className="min-h-dvh">
       <header className="border-b border-line/60 bg-canvas/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3.5">
-          <Link href={session ? "/cs2" : "/"} className="font-mono text-sm font-bold tracking-tight">
+          <Link href={session ? "/games/730" : "/"} className="font-mono text-sm font-bold tracking-tight">
             Frag<span className="text-accent">IQ</span>
           </Link>
           <span className="hud">comparação</span>

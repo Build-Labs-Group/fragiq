@@ -498,6 +498,9 @@ model MatchDemo {
   ticks  Int?
   /// O payload inteiro (jogadores, rounds, eventos, tiros).
   dados  Json?
+  /// A partida round a round (src/lib/demo/linha-do-tempo.ts), pronta
+  /// para a página; nula nas demos lidas antes de 29/09 até a primeira visita.
+  linhaDoTempo Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
