@@ -34,7 +34,7 @@ export function SessaoHero({ sessao, normais, notas = [], lente }: { sessao: Ses
   ];
 
   return (
-    <section className="glow entrar relative overflow-hidden rounded-2xl bg-surface">
+    <section className="glow relative overflow-hidden rounded-2xl bg-surface">
       <div className="grid-bg pointer-events-none absolute inset-0 opacity-60" aria-hidden />
       <div className="relative p-5 sm:p-7">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">

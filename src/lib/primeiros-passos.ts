@@ -1,4 +1,3 @@
-import { cache } from "react";
 import { prisma } from "./prisma";
 
 /**
@@ -18,7 +17,7 @@ export type Progresso = { feitos: number; total: number };
 /** Quantos são — o cartão do Resumo e o cabeçalho contam a mesma lista. */
 export const TOTAL_DE_PASSOS = 5;
 
-export const progressoDosPrimeirosPassos = cache(async function progressoDosPrimeirosPassos(userId: string): Promise<Progresso | null> {
+export async function progressoDosPrimeirosPassos(userId: string): Promise<Progresso | null> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -33,4 +32,4 @@ export const progressoDosPrimeirosPassos = cache(async function progressoDosPrim
   const passos = [true, coletas > 0, Boolean(user.botAmigoDesde), coletas >= 2, Boolean(user.partidasAtivadasEm && !user.partidasErro)];
   const feitos = passos.filter(Boolean).length;
   return feitos === passos.length ? null : { feitos, total: passos.length };
-});
+}

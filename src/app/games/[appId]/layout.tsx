@@ -38,7 +38,7 @@ export default async function GameLayout({
   const appId = Number((await params).appId);
   if (!Number.isInteger(appId)) notFound();
 
-  const [user, userGame, selo, lente, jar, passos, botAmigo] = await Promise.all([
+  const [user, userGame, selo, lente, jar, passos] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { personaName: true, avatarUrl: true, lastSyncedAt: true, steamId: true },
@@ -56,9 +56,6 @@ export default async function GameLayout({
     lenteDoUsuario(session.userId, appId),
     cookies(),
     progressoDosPrimeirosPassos(session.userId),
-    // Junto com o resto, e não dentro do JSX: lá ela esperava as seis
-    // consultas acima terminarem para só então começar.
-    appId === 730 ? botEhAmigo(session.steamId) : Promise.resolve(true as boolean | null),
   ]);
   if (!user) redirect("/");
 
@@ -95,7 +92,7 @@ export default async function GameLayout({
               </div>
               <div className="mt-4">
                 <Suspense>
-                  <NavJogo appId={appId} abas={lente.abas} cobertura={lente.cobertura} doCookie={jar.get(COOKIE_MODO)?.value} botAmigo={botAmigo} />
+                  <NavJogo appId={appId} abas={lente.abas} cobertura={lente.cobertura} doCookie={jar.get(COOKIE_MODO)?.value} botAmigo={appId === 730 ? await botEhAmigo(session.steamId) : true} />
                 </Suspense>
               </div>
             </div>

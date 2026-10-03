@@ -34,13 +34,9 @@ export const dynamic = "force-dynamic";
 export default async function SessoesPage({ params, searchParams }: { params: Promise<{ appId: string }>; searchParams: SearchParams }) {
   const session = await requireSession();
   const appId = Number((await params).appId);
-  const [fonte, abas, chips] = await Promise.all([
-    carregarFonte(session.userId, appId),
-    abasDoUsuario(session.userId, appId),
-    chipsDeSessao(session.userId, appId),
-  ]);
+  const fonte = await carregarFonte(session.userId, appId);
   if (!fonte) notFound();
-  const modo = await modoDaRequisicao(searchParams, abas);
+  const modo = await modoDaRequisicao(searchParams, await abasDoUsuario(session.userId, appId));
   const lente = filtroDoModo(modo)?.mode ?? null;
 
   const sessoes = listarSessoes(fonte.rows).reverse();
@@ -51,6 +47,7 @@ export default async function SessoesPage({ params, searchParams }: { params: Pr
   const adr = CS2_PANEL.find((s) => s.key === "adr")!;
   const hs = CS2_PANEL.find((s) => s.key === "hs")!;
   const doModo = lente ? sessoes.filter((s) => s.modoId === lente).length : sessoes.length;
+  const chips = await chipsDeSessao(session.userId, appId);
   /** O chip materializado da linha, e a linha inteira do insight para o `title`. */
   const chipDe = (s: (typeof sessoes)[number]) => {
     const i = s.snapshotId ? chips.get(s.snapshotId) : undefined;

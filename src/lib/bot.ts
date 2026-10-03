@@ -1,4 +1,3 @@
-import { cache as memoizarNaRequisicao } from "react";
 import { getPlayerSummary, type SteamPlayer } from "./steam/api";
 import { getFriendIds } from "./steam/api";
 import { prisma } from "./prisma";
@@ -36,7 +35,7 @@ export async function perfilDoBot(): Promise<SteamPlayer | null> {
  * O cache guarda a resposta inteira — antes guardava `false` para lista
  * privada, e a segunda visita dizia "não é amigo" em vez de "não sei".
  */
-export const botEhAmigo = memoizarNaRequisicao(async function botEhAmigo(steamId: string): Promise<boolean | null> {
+export async function botEhAmigo(steamId: string): Promise<boolean | null> {
   const doBot = await prisma.botAmigo.findUnique({ where: { steamId }, select: { saiuEm: true } }).catch(() => null);
   if (doBot && !doBot.saiuEm) return true;
   const hit = amizade.get(steamId);
@@ -45,4 +44,4 @@ export const botEhAmigo = memoizarNaRequisicao(async function botEhAmigo(steamId
   const amigo = ids.length === 0 ? null : ids.includes(BOT_STEAM_ID);
   amizade.set(steamId, { em: Date.now(), amigo });
   return amigo;
-});
+}

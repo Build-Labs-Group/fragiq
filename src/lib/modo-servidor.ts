@@ -1,4 +1,3 @@
-import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { carregarFonte } from "./fonte";
@@ -20,8 +19,7 @@ export async function abasDoUsuario(userId: string, appId: number): Promise<AbaD
   return (await lenteDoUsuario(userId, appId)).abas;
 }
 
-/** Memoizada por requisição: o layout e a página perguntam a mesma coisa, e a resposta custa um groupBy. */
-export const lenteDoUsuario = cache(async function lenteDoUsuario(userId: string, appId: number): Promise<{ abas: AbaDeModo[]; cobertura: Cobertura }> {
+export async function lenteDoUsuario(userId: string, appId: number): Promise<{ abas: AbaDeModo[]; cobertura: Cobertura }> {
   const [fonte, porPartida] = await Promise.all([
     carregarFonte(userId, appId),
     appId === 730
@@ -39,7 +37,7 @@ export const lenteDoUsuario = cache(async function lenteDoUsuario(userId: string
     abas: abasDeModo(rows, partidas),
     cobertura: { comModo: sessoes.filter((s) => s.modoId).length, total: sessoes.length },
   };
-});
+}
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

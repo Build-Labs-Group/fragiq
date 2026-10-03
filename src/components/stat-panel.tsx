@@ -36,11 +36,8 @@ export function StatPanel({ stats, snapshots, lente = null, appId, limite }: Pro
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {cartoes.map((c, i) => (
-        // A entrada em cascata é do invólucro: o cartão continua sem saber de animação.
-        <div key={c.stat.key} className="entrar grid" style={{ "--i": i } as React.CSSProperties}>
-          <StatCard stat={c.stat} pontos={c.pontos} atual={c.atual} normal={c.normal} lente={lente} appId={appId} />
-        </div>
+      {cartoes.map((c) => (
+        <StatCard key={c.stat.key} stat={c.stat} pontos={c.pontos} atual={c.atual} normal={c.normal} lente={lente} appId={appId} />
       ))}
     </div>
   );

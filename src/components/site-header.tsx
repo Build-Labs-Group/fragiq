@@ -40,7 +40,7 @@ type Props = {
  * produzia 471px de conteúdo e jogava o botão de sair para fora da tela.
  */
 const SECOES = [
-  { href: "/games/730", rotulo: "CS2", combina: (p: string) => p === "/cs2" || p.startsWith("/games/") },
+  { href: "/cs2", rotulo: "CS2", combina: (p: string) => p === "/cs2" || p.startsWith("/games/") },
   { href: "/amigos", rotulo: "Amigos", combina: (p: string) => p.startsWith("/amigos") },
   { href: "/comunidade", rotulo: "Comunidade", combina: (p: string) => p.startsWith("/comunidade") },
 ];
@@ -51,7 +51,7 @@ export function SiteHeader({ personaName, avatarUrl, steamId, lastSyncedAt, admi
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2 sm:gap-5 sm:px-6 sm:py-2.5">
-        <Link href="/games/730" className="shrink-0 font-mono text-sm font-bold tracking-tight">
+        <Link href="/cs2" className="shrink-0 font-mono text-sm font-bold tracking-tight">
           Frag<span className="text-accent">IQ</span>
         </Link>
 
