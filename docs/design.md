@@ -275,30 +275,7 @@ Só onde há busca no cliente: o corpo do cartão do analista, que consulta
 `/api/analises` a cada 2,5 s enquanto houver análise em aberto. Uma barra
 `h-6 w-1/2` no lugar da manchete e três `h-3` (`w-4/5`, `w-full`, `w-2/3`)
 em `bg-surface-2 animate-pulse`. O cabeçalho do cartão vem do servidor e não
-tem skeleton.
-
-Desde 29/09 as telas do servidor também têm, pelos `loading.tsx` do App
-Router: `app/loading.tsx` (qualquer página, com a forma do cabeçalho do
-site), `games/[appId]/loading.tsx` (a forma do Resumo, dentro do layout —
-cabeçalho do jogo e abas continuam clicáveis), `sessoes/` e `partidas/`
-(forma de lista) e `partida/[id]/` (placar, faixa e times). As peças moram
-em `components/esqueleto.tsx` e usam `.esqueleto` (brilho lento, sem
-número nem texto inventado). A regra é a da geometria: o esqueleto tem a
-forma do bloco real, para que a troca não mova nada.
-
-Erros do servidor caem em `error.tsx` (`components/falha.tsx`): uma linha,
-**Tentar de novo** (refaz só o trecho) e o `digest` que aparece nos logs do
-servidor (CloudWatch da Lambda `fragiq-site`). Dentro do jogo o erro fica
-no lugar do conteúdo, com as abas vivas.
-
-### 2.8 Movimento
-
-Três animações, todas desligadas por `prefers-reduced-motion`:
-`.tracar` (2.1), `.entrar` — blocos sobem e acendem em cascata, 45 ms entre
-um e outro pela variável `--i` (hero, cartões, atividade, painel de
-partidas) — e `.crescer`, barras que sobem do eixo. Nada anima em loop além
-do esqueleto; número nenhum "conta" até o valor, porque um número que muda
-enquanto se lê é um número em que não se confia.
+tem skeleton. Nenhuma outra tela tem: são server components.
 
 ---
 
@@ -362,12 +339,7 @@ falta**. Largura `max-w-6xl`.
    como parágrafo. É o único `glow` da tela.
 3. **Análise** (5): manchete e ação, sem repetir os números do hero.
 4. **Estatísticas**: seis cartões (2.3), com link para a aba.
-5. **Atividade · 30 dias** (`atividade.tsx`): cinco contagens — sessões,
-   partidas, rounds, horas em partida, dias com sessão — contra os 30 dias
-   anteriores, com chip **neutro** (volume não tem valência:
-   `melhorQuando: "nenhuma"`), e as barras de rounds por dia, pelo dia em
-   que a sessão fechou. Com lente, a parte do modo acende e o resto apaga.
-6. **Por modo** (3).
+5. **Por modo** (3).
 
 As leituras de K/D, headshot e modo saíram do Resumo: eram o hero em prosa.
 Na tela, `lerSerie` só alimenta os chips-nota do hero (`amostra`, `mapas`);
@@ -426,22 +398,6 @@ Club não entram`) e o formulário ao lado. Com ela ligada, é a tabela, mais o
 estado da fila (o bot pergunta ao Game Coordinator em até um minuto), o erro
 quando a Steam para de aceitar o código, e o rodapé `Corrente ligada ·
 Revogar · gerar outro código`.
-
-Acima da tabela, com duas partidas ou mais, o painel (`partidas-painel.tsx`):
-vitórias, K/D, HS e kills por round **somados** dos scoreboards listados; a
-**forma** (as últimas 20, da mais antiga para a mais recente, cada quadrado
-um link, com o K/D da partida em barra sob o quadrado e a linha do 1,00); e
-**por mapa** (barra = partidas, dividida em vitórias e derrotas). Aqui
-verde e vermelho são valência de verdade — vencer é bom.
-
-A página da partida (`partida/[id]`) ganhou a faixa **round a round**
-(`rounds-da-partida.tsx`), lida de `MatchDemo.linhaDoTempo`
-(`lib/demo/linha-do-tempo.ts`): a diferença de rounds depois de cada round
-(acima do zero, seu time na frente), e uma célula por round na linha de quem
-venceu, na cor do lado (`--side-ct`/`--side-t`) e com o ícone de como
-acabou; a troca de lados abre um vão, e com economia (payload v2) um traço
-de três níveis diz a compra do time. Os times ficam um sob o outro, com as
-tabelas rolando na horizontal em tela estreita.
 
 ### 4.5 Métricas — `metricas/page.tsx`, `metric-table.tsx`
 

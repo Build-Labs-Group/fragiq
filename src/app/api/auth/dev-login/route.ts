@@ -26,5 +26,5 @@ export async function GET(request: NextRequest) {
   }
 
   await createSession({ userId: user.id, steamId: user.steamId });
-  return NextResponse.redirect(new URL("/games/730", appUrl()));
+  return NextResponse.redirect(new URL("/cs2", appUrl()));
 }

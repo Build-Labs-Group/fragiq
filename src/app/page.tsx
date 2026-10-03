@@ -27,7 +27,7 @@ export default async function Home({
 }: {
   searchParams: Promise<{ erro?: string }>;
 }) {
-  if (await getSession()) redirect("/games/730");
+  if (await getSession()) redirect("/cs2");
   const { erro } = await searchParams;
 
   return (

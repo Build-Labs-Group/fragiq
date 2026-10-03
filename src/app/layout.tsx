@@ -1,17 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-/**
- * Geist vem do pacote `geist` (next/font/local), não do Google Fonts: o
- * arquivo já está no node_modules, então o build não depende de uma busca
- * de rede e a fonte sai do mesmo domínio, com preload e `font-display: swap`.
- */
-const geistSans = GeistSans;
-const geistMono = GeistMono;
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "FragIQ — suas estatísticas de CS2 ao longo do tempo",
