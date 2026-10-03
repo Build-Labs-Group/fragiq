@@ -430,3 +430,42 @@ janela igual.
 uma semana. Se a projeção do mês passar de ~80 CU-hora, achar o caminho que
 ainda acorda o banco antes que a cota de 100 acabe. Depois da semana, com ok:
 apagar o projeto da Vercel e o Supabase.
+
+### Legado da Vercel e do Supabase (03/10/2026)
+
+Decisão do Murilo em 03/10: o que não tem risco sai já; o que tem risco
+espera data. Situação levantada às 19:00 UTC:
+
+| Peça | Quem ainda usa | Situação |
+|---|---|---|
+| Bot no host (`FRAGIQ_WEBHOOK_URL` no container) | só `https://fragiq.buildlabs.com.br` | nada aponta para a Vercel nem para o Supabase |
+| `/cogniflow/prod/platform` v8 e `/fragiq/prod/site` v3 | só `fragiq.buildlabs.com.br` e o Neon | idem |
+| DNS `fragiq.buildlabs.com.br` | CNAME para o API Gateway (AWS) | a Vercel não recebe tráfego do domínio |
+| Erros do Prisma em `/api/bot/*` na Vercel | último em 01/10 03:37 | eram o bot antigo (EC2), antes da migração do bot |
+| Projeto `fragiq` da Vercel | o cron diário dela (05:55, grava no Supabase) e um **monitor do Better Stack** (conta `murilosantoseduardo@gmail.com`) em `https://fragiq-rouge.vercel.app/api/health` a cada ~3 min | **mantido**: apagar agora dispara alarme falso e deixa o fragiq sem monitor |
+| Supabase `wxkjpadcpxeugpxyupcr` (store `fragiq-db` da Vercel) | só a Vercel: o `/api/health` lê `cron_runs` e o cron grava. O bot parou de gravar às 21:26 de 02/10 | **mantido** pelo mesmo motivo; **backup final feito** |
+
+**Backup final do Supabase:** `s3://fragiq-backups-576951332499/supabase-wxkjpadcpxeugpxyupcr/2026-10-03/`
+(bucket privado, SSE-S3, versionado, só TLS, tags da empresa). `pg_dump` 17.7
+do banco inteiro (formato custom, 3,0 MB, sha256 `fb8db958…37beb439`,
+conferido depois de baixar), a lista do conteúdo, um `LEIA-ME.txt` e a
+conferência: restore do schema `public` num Postgres 17.7 local sem erro, 28
+de 28 tabelas com as mesmas linhas do Supabase ao vivo (9.924) e o mesmo
+conteúdo. O Neon tem as mesmas tabelas com mais linhas (11.228).
+Para restaurar: `pg_restore -d <url> --no-owner --no-privileges [--schema=public] <arquivo>.dump`.
+
+**Para apagar os dois (quando o monitor sair da Vercel):**
+
+1. No Better Stack, trocar a URL do monitor para
+   `https://fragiq.buildlabs.com.br/api/health` (responde 200 de fora, pela
+   Cloudflare) ou apagar o monitor.
+2. `vercel project rm fragiq` (time `murilo-eduardo-dos-santos-projects-7b517b00`).
+3. `vercel integration-resource remove fragiq-db` (apaga o projeto Supabase
+   pela integração da Vercel).
+4. Na conta pessoal 981629165995 (quando houver sessão): role
+   `fragiq-vercel` e segredo `cogniflow/tenants/fragiq`, que só a Vercel lia.
+
+Também na Vercel e fora deste plano: o store `neon-frag-iq-db` (Neon
+`curly-art-60176107`, de 03/09, sem projeto ligado). A API não entrega a
+credencial, então não dá para medir uso nem fazer backup por aqui; fica até
+alguém abrir pelo console.
