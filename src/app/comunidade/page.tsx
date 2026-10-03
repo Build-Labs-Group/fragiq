@@ -56,7 +56,7 @@ export default async function ComunidadePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
-      <Link href={session ? "/cs2" : "/"} className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-accent">
+      <Link href={session ? "/games/730" : "/"} className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-accent">
         <ArrowLeft className="size-4" /> FragIQ
       </Link>
 

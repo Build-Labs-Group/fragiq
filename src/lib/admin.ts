@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "./prisma";
 
 /**
@@ -24,9 +25,9 @@ export function isAdmin(steamId: string | null | undefined): boolean {
  * O formulário da comunidade acrescenta papéis, GitHub e uma frase; não é
  * ele que dá o selo, senão o primeiro usuário do site ficaria sem.
  */
-export async function seloDe(userId: string): Promise<"fundador" | "beta" | null> {
+export const seloDe = cache(async function seloDe(userId: string): Promise<"fundador" | "beta" | null> {
   const eu = await prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } });
   if (!eu) return null;
   const antes = await prisma.user.count({ where: { createdAt: { lt: eu.createdAt } } });
   return antes < 100 ? "fundador" : "beta";
-}
+});
