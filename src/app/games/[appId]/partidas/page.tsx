@@ -4,6 +4,7 @@ import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { listarPartidas, shareCodeConhecido } from "@/lib/partidas";
 import { AtivarPartidas, PAGINA_STEAM } from "@/components/ativar-partidas";
+import { PartidasPainel } from "@/components/partidas-painel";
 import { PartidasTabela } from "@/components/partidas-tabela";
 import { Estado } from "@/components/estado";
 import { filtroDoModo, rotuloDoModo, TUDO } from "@/lib/modo";
@@ -102,7 +103,10 @@ export default async function PartidasPage({ params, searchParams }: { params: P
           acao={modo === TUDO ? undefined : { rotulo: "Ver todas", href: `/games/${appId}/partidas` }}
         />
       ) : (
-        <PartidasTabela partidas={partidas} />
+        <>
+          <PartidasPainel partidas={partidas} />
+          <PartidasTabela partidas={partidas} />
+        </>
       )}
       {ativo && (
         <p className="text-xs text-ink-faint">

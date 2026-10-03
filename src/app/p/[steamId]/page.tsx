@@ -137,7 +137,7 @@ export default async function PerfilPublicoPage({
     <div className="min-h-dvh">
       <header className="border-b border-line/60 bg-canvas/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3.5">
-          <Link href={session ? "/cs2" : "/"} className="font-mono text-sm font-bold tracking-tight">
+          <Link href={session ? "/games/730" : "/"} className="font-mono text-sm font-bold tracking-tight">
             Frag<span className="text-accent">IQ</span>
           </Link>
           <span className="hud">perfil público</span>
@@ -205,7 +205,7 @@ export default async function PerfilPublicoPage({
                   </Link>
                 )}
                 {souEu ? (
-                  <Link href="/cs2" className="inline-flex items-center gap-2 text-sm text-ink-muted transition hover:text-accent">
+                  <Link href="/games/730" className="inline-flex items-center gap-2 text-sm text-ink-muted transition hover:text-accent">
                     Ver a minha curva <ArrowRight className="size-4" />
                   </Link>
                 ) : estado === "nada" ? (

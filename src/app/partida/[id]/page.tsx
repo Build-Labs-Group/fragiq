@@ -11,6 +11,7 @@ import { formatarQuando } from "@/lib/sessoes";
 import { rotularMapa } from "@/lib/cs2-labels";
 import { SteamMark } from "@/components/steam-mark";
 import { Selo } from "@/components/selo";
+import { RoundsDaPartida } from "@/components/rounds-da-partida";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
   return (
     <div className="min-h-dvh">
       <header className="border-b border-line/60 bg-canvas/70 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-3.5">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3.5 sm:px-6">
           <Link href={session ? "/games/730/partidas" : "/"} className="font-mono text-sm font-bold tracking-tight">
             Frag<span className="text-accent">IQ</span>
           </Link>
@@ -60,7 +61,7 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <section className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="hud" suppressHydrationWarning>
@@ -72,8 +73,8 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
                 <span
                   className={cn(
                     "ml-3 align-middle rounded-md px-2 py-0.5 text-sm font-medium",
-                    resultado === "vitória" && "bg-accent/15 text-accent",
-                    resultado === "derrota" && "bg-danger/15 text-danger",
+                    resultado === "vitória" && "bg-good-soft text-good",
+                    resultado === "derrota" && "bg-bad-soft text-bad",
                     resultado === "empate" && "bg-surface-2 text-ink-muted",
                   )}
                 >
@@ -89,7 +90,16 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
           </p>
         </section>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {demo.rounds && (
+          <RoundsDaPartida
+            linha={demo.rounds}
+            escalacoes={partida.times.map((t) => t.jogadores.map((j) => j.steamId))}
+            rotulos={["Time A", "Time B"]}
+            meuTime={meuTime ? partida.times.indexOf(meuTime) : null}
+          />
+        )}
+
+        <div className="mt-8 grid gap-6">
           {partida.times.map((t, i) => (
             <Time
               key={t.time}
@@ -182,6 +192,7 @@ function Time({
         </p>
         <p className="num text-lg font-semibold">{time.placar}</p>
       </div>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-t border-line-soft text-left">
@@ -195,14 +206,14 @@ function Time({
           {time.jogadores.map((j) => (
             <tr key={j.steamId} className={cn("border-t border-line-soft", j.steamId === meuSteamId && "bg-accent/5")}>
               <td className="px-4 py-2 font-sans">
-                <Link href={`/p/${j.steamId}`} className="flex items-center gap-2.5 hover:text-accent">
+                <Link href={`/p/${j.steamId}`} className="flex min-w-0 max-w-[9rem] sm:max-w-[13rem] items-center gap-2.5 hover:text-accent">
                   {j.avatar ? (
                     <Image src={j.avatar} alt="" width={28} height={28} className="size-7 rounded-md ring-1 ring-line" unoptimized />
                   ) : (
                     <span className="size-7 rounded-md bg-surface-2 ring-1 ring-line" />
                   )}
                   <span className="truncate">{j.nome ?? j.steamId}</span>
-                  {j.userId && <Selo tipo="beta" />}
+                  {j.userId && <Selo tipo="beta" className="shrink-0 whitespace-nowrap" />}
                 </Link>
               </td>
               <td className="px-3 py-2 text-right">{n(j.kills)}</td>
@@ -221,6 +232,7 @@ function Time({
           ))}
         </tbody>
       </table>
+      </div>
       <PorCompraDoTime time={time} metricas={metricas} />
       <Conversao c={conversao} />
       <Ritmo c={conversao} />
@@ -253,6 +265,7 @@ function PorCompraDoTime({ time, metricas }: { time: Scoreboard["times"][number]
       title={`Compra do time no fim do freeze, pela média do equipamento: eco abaixo de ${LIMITE_ECO.toLocaleString("pt-BR")}, cheia a partir de ${LIMITE_CHEIA.toLocaleString("pt-BR")}, meia entre os dois; pistol é o primeiro round de cada metade com dinheiro de eco. Cada célula é o ADR e as kills do jogador nesses rounds.`}
     >
       <p className="hud px-4 pt-2.5">ADR por compra</p>
+      <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-left">
@@ -267,7 +280,7 @@ function PorCompraDoTime({ time, metricas }: { time: Scoreboard["times"][number]
         <tbody className="num">
           {linhas.map(({ j, c }) => (
             <tr key={j.steamId} className="border-t border-line-soft">
-              <td className="truncate px-4 py-1.5 font-sans text-ink-muted">{j.nome ?? j.steamId}</td>
+              <td className="max-w-[9rem] sm:max-w-[13rem] truncate px-4 py-1.5 font-sans text-ink-muted">{j.nome ?? j.steamId}</td>
               {colunas.map((k) => {
                 const na = c?.[k.classe];
                 return (
@@ -287,6 +300,7 @@ function PorCompraDoTime({ time, metricas }: { time: Scoreboard["times"][number]
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

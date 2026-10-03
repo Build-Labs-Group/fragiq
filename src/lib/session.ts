@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
@@ -33,7 +34,12 @@ export async function createSession(payload: SessionPayload) {
   });
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+/**
+ * Memoizada por requisição: o layout, a página e o cabeçalho pedem a sessão
+ * cada um, e cada pedido era um HMAC do cookie. Fora de uma renderização
+ * (rotas de API) o `cache` não guarda nada e a função roda como antes.
+ */
+export const getSession = cache(async function getSession(): Promise<SessionPayload | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
 
@@ -45,7 +51,7 @@ export async function getSession(): Promise<SessionPayload | null> {
     // Assinatura inválida ou token expirado — trata como deslogado.
     return null;
   }
-}
+});
 
 export async function destroySession() {
   (await cookies()).delete(COOKIE);
