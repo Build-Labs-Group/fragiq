@@ -9,7 +9,7 @@ esforco: P
 area: src/app/amigos, src/lib/social.ts
 criado_por: po
 criado_em: 2026-09-29
-atualizado_em: 2026-09-29
+atualizado_em: 2026-10-03
 commits: [ac6a792]
 relacionados: []
 ---
@@ -70,14 +70,25 @@ rotinas) como devDependency, `playwright.config.ts` (desktop 1280x800 e
 celular 390x844, sobe o `next dev` sozinho) e o script `test:e2e`. O E2E não
 roda no CI nem no build da Vercel; roda local com o banco do seed.
 
+### 2026-10-03 · Dev
+Rebase na `main` (site na AWS e PR #7 já dentro). Conflito em
+`src/app/error.tsx`: ficou o do #7 (`components/falha.tsx`), que tem o mesmo
+papel; o desta branch saiu. `.gitignore` somou as linhas do Playwright às do
+pacote da Lambda. Na `main` o FQ-0002 e o FQ-0003 já estavam `feito`, então o
+INDEX ficou com o status de lá. Status continua `feito`; falta a PO validar em
+produção.
+
 ## Entrega
 - **Resumo:** `/amigos` abre mesmo quando o cogniflow ou a Steam falham: a
   pessoa vê quem segue e quem a segue, e um aviso de que a lista da Steam não
   pôde ser lida agora. Qualquer outro erro inesperado mostra uma tela do FragIQ
   com "Tentar de novo", em vez da tela padrão do Next.
-- **Commits:** `ac6a792` (branch `rotina/dev-2026-09-29`, no `rotina-dev-2026-09-29.bundle` da pasta local; **sem push**, ver relatório do dia).
+- **Commits:** `ac6a792` na branch `rotina/dev-2026-09-29`, rebaseada na
+  `main` em 03/10 e entregue pelo PR #21.
 - **Arquivos:** `src/lib/social.ts`, `src/app/amigos/page.tsx`,
-  `src/app/error.tsx`, `playwright.config.ts`, `package.json`.
+  `playwright.config.ts`, `package.json`. O `src/app/error.tsx` desta entrega
+  deu lugar ao do PR #7 (`components/falha.tsx`), que chegou antes à `main` e
+  cumpre o mesmo critério.
 - **Testes:** `tests/lib/amigos-leitura.test.ts` (falha vira `leituraFalhou` e
   vai ao diário; falha não fica em cache) e `e2e/amigos.spec.ts` (200, Seguindo,
   Seguidores e o aviso, desktop e celular). Resultado em
@@ -89,7 +100,8 @@ roda no CI nem no build da Vercel; roda local com o banco do seed.
   | ![antes desktop](../evidencias/FQ-0001/dev-antes-01-amigos-desktop.png) | ![depois desktop](../evidencias/FQ-0001/dev-depois-01-amigos-desktop.png) |
   | ![antes celular](../evidencias/FQ-0001/dev-antes-01-amigos-mobile.png) | ![depois celular](../evidencias/FQ-0001/dev-depois-01-amigos-mobile.png) |
 
-  Tela de erro nova (rota de teste temporária, não commitada):
+  Tela de erro desta entrega (rota de teste temporária, não commitada; na
+  `main` vale a do PR #7, com o mesmo "Tentar de novo" e o `digest`):
   ![error.tsx desktop](../evidencias/FQ-0001/dev-depois-02-error-tsx-desktop.png)
 - **Como validar:** local: `docker compose up -d && npm run db:migrate && npm
   run seed`, `.env` sem `COGNIFLOW_*`, `npm run test:e2e`. Em produção (depois
