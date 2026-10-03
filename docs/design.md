@@ -287,8 +287,9 @@ número nem texto inventado). A regra é a da geometria: o esqueleto tem a
 forma do bloco real, para que a troca não mova nada.
 
 Erros do servidor caem em `error.tsx` (`components/falha.tsx`): uma linha,
-**Tentar de novo** (refaz só o trecho) e o `digest` que aparece nos logs da
-Vercel. Dentro do jogo o erro fica no lugar do conteúdo, com as abas vivas.
+**Tentar de novo** (refaz só o trecho) e o `digest` que aparece nos logs do
+servidor (CloudWatch da Lambda `fragiq-site`). Dentro do jogo o erro fica
+no lugar do conteúdo, com as abas vivas.
 
 ### 2.8 Movimento
 

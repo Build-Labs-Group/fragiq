@@ -9,7 +9,8 @@ import { RotateCw } from "lucide-react";
  * Steam lenta, um bug. Sem isto o Next mostra a página de erro dele, em
  * inglês e sem saída. Aqui: o que aconteceu em uma linha, tentar de novo
  * (que refaz só o trecho que falhou) e um caminho para casa. O `digest` é
- * o id que aparece nos logs da Vercel, para quem for reportar.
+ * o id que aparece nos logs do servidor (CloudWatch da Lambda `fragiq-site`),
+ * para quem for reportar.
  */
 export function Falha({ error, reset, compacto = false }: { error: Error & { digest?: string }; reset: () => void; compacto?: boolean }) {
   useEffect(() => {
