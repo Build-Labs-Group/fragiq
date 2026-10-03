@@ -50,7 +50,9 @@ export default async function AmigosPage() {
         </div>
 
         <Secao titulo="Da sua lista da Steam" n={amigos.amigos.length}>
-          {amigos.listaPrivada ? (
+          {amigos.leituraFalhou ? (
+            <Vazio texto="Não deu para ler a sua lista de amigos da Steam agora. Tente de novo em alguns minutos; quem você segue e quem te segue está logo abaixo." />
+          ) : amigos.listaPrivada ? (
             <Vazio texto="Sua lista de amigos está privada na Steam. Em Editar perfil → Privacidade, deixe 'Lista de amigos' pública e volte aqui." />
           ) : amigos.amigos.length === 0 ? (
             <Vazio texto={`Nenhum dos seus ${amigos.totalAmigos} amigos entrou ainda.`} />

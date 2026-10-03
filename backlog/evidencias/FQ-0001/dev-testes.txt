@@ -1,0 +1,23 @@
+FQ-0001 · 2026-09-29 · app local (Postgres 16 local, npm run seed, /api/auth/dev-login, sem COGNIFLOW_*)
+
+Antes (main ab60712):
+desktop /amigos 500 1044ms (console: 500 do documento)
+mobile /amigos 500 1026ms (console: 500 do documento)
+e2e/amigos.spec.ts: 2 falhas (Expected 200, Received 500)
+
+Depois:
+typecheck: verde · lint: verde · build (next build): ok
+npm test:
+      Tests  170 passed (170)
+   Start at  07:33:32
+   Duration  8.78s (transform 919ms, setup 0ms, collect 1.45s, tests 1.21s, environment 4ms, prepare 1.50s)
+
+npm run test:e2e:
+  ✓  1 [desktop] › e2e/amigos.spec.ts:3:5 › amigos abre com Seguindo e Seguidores quando a lista da Steam não pode ser lida (11.5s)
+  ✓  2 [celular] › e2e/amigos.spec.ts:3:5 › amigos abre com Seguindo e Seguidores quando a lista da Steam não pode ser lida (3.4s)
+
+  2 passed (26.8s)
+
+Log do servidor na falha (sem steamId nem segredo):
+[amigos.leitura] A leitura da Steam passa pelo cogniflow: defina COGNIFLOW_API_URL, ... (ver docs/cogniflow-tenant.md).
+Obs.: em dev o Next repete esse console.error do servidor no console do navegador; em produção não.

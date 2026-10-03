@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { reportarErro } from "./eventos";
 import { getFriendIds } from "./steam/api";
 
 /**
@@ -34,13 +35,25 @@ async function idsDeAmigos(steamId: string): Promise<string[]> {
   return ids;
 }
 
-/** Amigos da Steam que têm conta no FragIQ, com o estado de seguir de cada um. */
+/**
+ * Amigos da Steam que têm conta no FragIQ, com o estado de seguir de cada um.
+ *
+ * Lista vazia é lista privada; leitura que falhou (cogniflow fora, timeout,
+ * recusa) é outra coisa, vai para o diário e não derruba quem chama: o resto
+ * de `/amigos` vem só do nosso banco.
+ */
 export async function amigosNoFragiq(
   meuId: string,
   meuSteamId: string,
-): Promise<{ amigos: (Pessoa & { estado: EstadoSeguir; meSegue: boolean })[]; listaPrivada: boolean; totalAmigos: number }> {
-  const ids = await idsDeAmigos(meuSteamId);
-  if (ids.length === 0) return { amigos: [], listaPrivada: true, totalAmigos: 0 };
+): Promise<{ amigos: (Pessoa & { estado: EstadoSeguir; meSegue: boolean })[]; listaPrivada: boolean; leituraFalhou: boolean; totalAmigos: number }> {
+  let ids: string[];
+  try {
+    ids = await idsDeAmigos(meuSteamId);
+  } catch (err) {
+    await reportarErro("amigos.leitura", err, meuId);
+    return { amigos: [], listaPrivada: false, leituraFalhou: true, totalAmigos: 0 };
+  }
+  if (ids.length === 0) return { amigos: [], listaPrivada: true, leituraFalhou: false, totalAmigos: 0 };
 
   const [pessoas, saidas, entradas] = await Promise.all([
     prisma.user.findMany({
@@ -61,6 +74,7 @@ export async function amigosNoFragiq(
       meSegue: meSeguem.has(p.id),
     })),
     listaPrivada: false,
+    leituraFalhou: false,
     totalAmigos: ids.length,
   };
 }
