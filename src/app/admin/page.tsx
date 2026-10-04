@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { carregarPainel, FUSO } from "@/lib/admin-dados";
 import { estadoDoBot, haQuanto, REPOUSO_DO_BOT_MS } from "@/lib/saude-do-bot";
+import { medirPendencias } from "@/lib/saude-dos-dados";
 import { SiteHeader } from "@/components/site-header";
 import { BarrasPorDia } from "@/components/barras-por-dia";
 import { cn } from "@/lib/utils";
@@ -23,12 +24,13 @@ export default async function AdminPage() {
   if (!session) redirect("/");
   if (!isAdmin(session.steamId)) notFound();
 
-  const [user, painel] = await Promise.all([
+  const [user, painel, pendencias] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { personaName: true, avatarUrl: true, lastSyncedAt: true, steamId: true },
     }),
     carregarPainel(),
+    medirPendencias(),
   ]);
   if (!user) redirect("/");
 
@@ -107,6 +109,36 @@ export default async function AdminPage() {
               valor={saude.chat24h.enviadas}
               nota={`${saude.chat24h.falhas} falha${saude.chat24h.falhas === 1 ? "" : "s"} · ${saude.chat24h.pendentes} pendente${saude.chat24h.pendentes === 1 ? "" : "s"} · ${saude.erros24h} erro${saude.erros24h === 1 ? "" : "s"} no diário`}
               alerta={saude.chat24h.falhas > 0 || saude.erros24h > 0}
+            />
+          </div>
+        </Secao>
+
+        <Secao
+          titulo="Dados em dia"
+          sub="O que terminou e ainda não apareceu para o jogador. É a mesma checagem que roda de 30 em 30 min e dispara o alarme (src/lib/saude-dos-dados.ts)."
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Tile
+              rotulo="Partidas sem sessão"
+              valor={pendencias.partidasSemSessao.length}
+              nota={
+                pendencias.partidasSemSessao.length
+                  ? `terminadas há mais de 24 h · a mais antiga há ${Math.round((Date.now() - Math.min(...pendencias.partidasSemSessao.map((p) => p.fim.getTime()))) / 3_600_000)} h`
+                  : "toda partida com mais de 24 h está numa sessão"
+              }
+              alerta={pendencias.partidasSemSessao.length > 0}
+            />
+            <Tile
+              rotulo="Análises sem resposta"
+              valor={pendencias.analisesSemResposta.length}
+              nota={pendencias.analisesSemResposta.length ? "abertas há mais de 30 min no cogniflow" : "o analista respondeu tudo"}
+              alerta={pendencias.analisesSemResposta.length > 0}
+            />
+            <Tile
+              rotulo="Capturas vencidas"
+              valor={pendencias.capturasVencidas.length}
+              nota={pendencias.capturasVencidas.length ? "deviam ter rodado há mais de 1 h: o tick parou?" : "o tick está em dia"}
+              alerta={pendencias.capturasVencidas.length > 0}
             />
           </div>
         </Secao>

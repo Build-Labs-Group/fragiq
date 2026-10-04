@@ -1,6 +1,6 @@
 import { InvokeCommand } from "@aws-sdk/client-lambda";
 import { describe, expect, it, vi } from "vitest";
-import { eventoDoCron, rodarAgenda } from "../lambdas/agenda.ts";
+import { eventoDoCron, origemDoEvento, rodarAgenda } from "../lambdas/agenda.ts";
 
 const SEGREDO = "segredo-do-cron-de-teste";
 
@@ -60,6 +60,24 @@ describe("agenda diária", () => {
   it("falha da Lambda do site vira erro com o motivo", async () => {
     const { d } = deps({ erro: "Task timed out after 300.00 seconds" });
     await expect(rodarAgenda(d)).rejects.toThrow(/timed out/);
+  });
+
+  it("com origem saude, chama /api/cron/saude e loga as pendências", async () => {
+    const corpo = JSON.stringify({ partidasSemSessao: [], analisesSemResposta: [{ id: "a1" }], capturasVencidas: [] });
+    const { d, lambda, log } = deps({ statusCode: 200, body: corpo });
+
+    expect(await rodarAgenda({ ...(d as object), origem: "saude" } as never)).toMatchObject({ analisesSemResposta: [{ id: "a1" }] });
+    const comando = lambda.send.mock.calls[0]![0] as InvokeCommand;
+    const evento = JSON.parse(new TextDecoder().decode(comando.input.Payload as Uint8Array));
+    expect(evento).toMatchObject({ rawPath: "/api/cron/saude", requestContext: { http: { path: "/api/cron/saude" } } });
+    expect(log.mock.calls[0]![0]).toBe("saude");
+  });
+
+  it("o evento do Scheduler escolhe a rota; sem origem conhecida, é a coleta diária", () => {
+    expect(origemDoEvento({ origem: "saude" })).toBe("saude");
+    expect(origemDoEvento({ origem: "agenda" })).toBe("agenda");
+    expect(origemDoEvento(undefined)).toBe("agenda");
+    expect(origemDoEvento({ origem: "outra" })).toBe("agenda");
   });
 
   it("o evento tem o formato da HTTP API (payload 2.0) que o Web Adapter entende", () => {

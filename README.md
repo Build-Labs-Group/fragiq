@@ -357,7 +357,35 @@ conectado pelo canal webhook — a pergunta sai assinada, a resposta volta por
 callback, e durante o turno o agente consulta `/api/cogniflow/data`, que
 expõe as mesmas derivações de `series.ts` como views. Provisionamento,
 contrato das views e prompt do agente em
-[docs/cogniflow-tenant.md](docs/cogniflow-tenant.md).
+[docs/cogniflow-tenant.md](docs/cogniflow-tenant.md). A resposta é gravada
+na pergunta que a pediu, provada pelo `id` da resposta (seção "De qual
+pergunta é a resposta" do mesmo documento), nunca pela ordem de chegada.
+
+## Saúde dos dados
+
+Uma partida termina e passa por três etapas até aparecer inteira para o
+jogador: o **GC** devolve o scoreboard (aba Partidas), a **Steam** publica os
+totais e a coleta grava o ponto que fecha uma **sessão** (Atividade, série,
+insights), e o **analista** responde a análise da sessão (cartão e chat da
+Steam). Cada etapa pode parar calada, e duas pararam em 02–03/10/2026 (um
+turno do analista sem texto deslocou as análises de um jogador; e a Steam
+de um jogador só publica os totais quando ele fecha o CS2, então um dia
+inteiro de jogo com o jogo aberto fica sem sessão até ele sair).
+
+`src/lib/saude-dos-dados.ts` mede o que está atrasado:
+
+| Pendência | Prazo | Alarme |
+|---|---|---|
+| Partida do GC que nenhuma sessão do jogador contém | 24 h depois do fim (só depois do primeiro ponto do jogador) | `fragiq-partidas-sem-sessao` |
+| Pergunta ao analista sem resposta | 30 min | `fragiq-analises-sem-resposta` |
+| Captura pendente vencida | 1 h (o tick parou) | `fragiq-capturas-vencidas` |
+| A própria checagem parou | 2 h sem medição | `fragiq-saude-sem-medicao` |
+
+A agenda da AWS chama `GET /api/cron/saude` às :00 e :30 (o mesmo turno em
+que o bot em repouso acorda o Neon), a rota escreve as contagens como
+métricas `FragIQ/*` (Embedded Metric Format, sem chamada de API) e os
+alarmes avisam pelo tópico de alertas da empresa (`cogniflow-alertas`, por
+e-mail). O `/admin` mostra as mesmas contagens em "Dados em dia".
 
 ## Segredos
 

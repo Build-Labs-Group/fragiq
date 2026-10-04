@@ -37,6 +37,13 @@ export interface Ambiente {
   /** Parâmetro SecureString com o JSON de segredos e configuração (ADR 0005). */
   parametro: string;
   agendaLigada: boolean;
+  /**
+   * Tópico SNS que recebe os alarmes de saúde dos dados. É o de alertas da
+   * empresa, hoje criado pela pilha do cogniflow (`cogniflow-alertas`, com o
+   * e-mail do Murilo já confirmado). Referência por ARN: a pilha do FragIQ
+   * não cria nem apaga o tópico.
+   */
+  topicoDeAlertas: string;
 }
 
 export function lerAmbiente(nome: unknown, virada = VIRADA_FEITA): Ambiente {
@@ -55,6 +62,7 @@ export function lerAmbiente(nome: unknown, virada = VIRADA_FEITA): Ambiente {
     appUrl: `https://${virada ? dominioPrincipal : dominioDeTeste}`,
     parametro: "/fragiq/prod/site",
     agendaLigada: virada,
+    topicoDeAlertas: `arn:aws:sns:${REGIAO}:${CONTA}:cogniflow-alertas`,
   };
 }
 
