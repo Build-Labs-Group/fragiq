@@ -54,6 +54,49 @@ O que mora em cada lado:
 | cogniflow `integration-service/app/integrations/webhook/` | o canal genérico |
 | cogniflow `orchestration-service/app/tools/data.py` | a capability `data.read` |
 
+## De qual pergunta é a resposta
+
+A resposta (`type=message`) não traz o id da nossa pergunta. Até 03/10/2026
+o callback gravava na **pergunta mais antiga em aberto** da conversa,
+supondo uma aberta por vez. A análise de sessão abre uma pergunta por sessão,
+sem esperar a anterior, e em 02/10 às 15:33 UTC um turno terminou sem texto
+(o `analista` estava no `cloudflare:@cf/openai/gpt-oss-20b`, versão 10, que
+gastava os 256 tokens no raciocínio; o cogniflow não entrega turno sem
+texto). A pergunta ficou aberta e, dali em diante, cada resposta de um
+jogador caiu na pergunta anterior à dela: 7 sessões mostravam a análise da
+sessão seguinte, a mensagem no chat da Steam saía uma sessão atrasada, e a
+última sessão ficava sempre "perdida". O `/admin` não mostrava nada errado.
+
+Desde 04/10 a dona é **provada** (`src/lib/resposta-do-analista.ts`):
+
+1. `reply_to_message_id` da resposta, quando é o id de uma pergunta da
+   conversa (o agente citou a mensagem);
+2. o `id` da resposta, que o cogniflow deriva do id da mensagem que abriu o
+   turno:
+
+   ```text
+   event_id = "{tenant}:webhook:{conexão}:{id da pergunta}"
+   id       = uuid5(NAMESPACE_URL, "message.send.requested:{tenant}:{conexão}:{conversa}:{event_id}:default")
+   ```
+
+   (cogniflow `orchestration-service/app/workers/requests.py::event_id_of` e
+   `app/capabilities/messaging.py::_command_id`). Conferido em 03/10 contra
+   as 25 respostas gravadas em produção: as 18 corretas batem com a própria
+   pergunta, as 7 deslocadas batem com a pergunta seguinte;
+3. uma única pergunta aberta na conversa (rede de segurança se o cogniflow
+   mudar a derivação).
+
+Sem nenhuma das três, a resposta **não é gravada** (`analise.resposta_sem_dona`
+no diário) e, se a dona já tiver outra resposta, também não
+(`analise.resposta_conflito`): análise de outra sessão na tela é pior que
+nenhuma. Pergunta aberta há mais de 30 min dispara o alarme
+`fragiq-analises-sem-resposta` (README, "Saúde dos dados").
+
+Reparo do que já estava deslocado: `scripts/banco/reparar-analises.ts`
+(simula por padrão; `--aplicar` grava numa transação por conversa, com
+auditoria em `eventos`). Rodado em 04/10/2026 (resultado em
+`backlog/itens/FQ-0005-analise-de-outra-sessao.md`).
+
 ## Provisionamento
 
 Ordem: (1) deploy dos dois serviços do cogniflow com o canal `webhook` e o
@@ -417,7 +460,8 @@ com o mesmo segredo em Python ou Node produz o mesmo header. O que checar:
   `conversation_id`, `sender`, `message`, `context` com `X-Signature-256`
   válida; uma segunda pergunta enquanto a primeira está aberta é 409.
 - `POST /api/cogniflow/callback` com `type=acknowledgement` muda o status
-  para ACKNOWLEDGED; com `type=message` grava a resposta; repetir o mesmo
-  `id` devolve `duplicate: true` sem escrever.
+  para ACKNOWLEDGED; com `type=message` grava a resposta na pergunta cujo
+  id derivado é o `id` da resposta (seção "De qual pergunta é a resposta");
+  repetir o mesmo `id` devolve `duplicate: true` sem escrever.
 - `POST /api/cogniflow/data` com `view=resumo` devolve o JSON; view errada é
   400 com mensagem; `context` de outro usuário é 403; assinatura errada é 403.
