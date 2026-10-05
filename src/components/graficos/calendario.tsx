@@ -66,7 +66,7 @@ export function Calendario({
   return (
     <div className={className}>
       <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="calendario h-auto w-full min-w-[22rem]" role="img" aria-label={`${ativos} dias com jogo nas últimas ${semanas} semanas, ${formatarNumero(total)} ${unidade}`}>
+        <svg viewBox={`0 0 ${W} ${H}`} className="calendario h-auto w-full min-w-[22rem]" style={{ maxWidth: W * 1.6 }} role="img" aria-label={`${ativos} dias com jogo nas últimas ${semanas} semanas, ${formatarNumero(total)} ${unidade}`}>
           {meses.map((c) => (
             <text key={`m${c.k}`} x={ESQ + c.col * PASSO} y={9} fontSize="9" fill="var(--ink-faint)" fontFamily="var(--font-geist-mono)">
               {c.data.toLocaleDateString(locale, { month: "short", timeZone: "UTC" }).replace(".", "")}

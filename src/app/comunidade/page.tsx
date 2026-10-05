@@ -7,20 +7,25 @@ import { SteamMark } from "@/components/steam-mark";
 import { Participar } from "@/components/participar";
 import { PerfilPublicoToggle } from "@/components/perfil-publico-toggle";
 import { Selo } from "@/components/selo";
+import { PanoramaComunidade } from "@/components/panorama-comunidade";
+import { carregarPanorama } from "@/lib/comunidade-dados";
+import { listarPartidas } from "@/lib/partidas";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Comunidade: quem constrói o FragIQ junto.
  *
- * Pública para ler, login para entrar. Três coisas: como participar, quem
- * já participa, e o que essas pessoas disseram em público. O selo de beta
- * tester é o reconhecimento — aparece aqui e no cabeçalho de quem tem.
+ * Pública para ler, login para entrar. Quatro coisas: como participar, o
+ * panorama do que o FragIQ vê nas partidas de todo mundo (agregado, sem
+ * nome — `components/panorama-comunidade.tsx`), quem já participa, e o
+ * que essas pessoas disseram em público. O selo de beta tester é o
+ * reconhecimento — aparece aqui e no cabeçalho de quem tem.
  */
 export default async function ComunidadePage() {
   const session = await getSession();
 
-  const [testers, feedbacks, eu, conta] = await Promise.all([
+  const [testers, feedbacks, eu, conta, panorama, minhas] = await Promise.all([
     // Todo mundo que entrou no beta, do primeiro ao último; quem pediu para
     // não aparecer some da lista, mas o selo continua sendo dele.
     prisma.user.findMany({
@@ -48,7 +53,12 @@ export default async function ComunidadePage() {
     session
       ? prisma.user.findUnique({ where: { id: session.userId }, select: { perfilPublico: true, steamId: true } })
       : null,
+    carregarPanorama(),
+    // O marcador "você" na distribuição: o K/D das próprias partidas oficiais.
+    session ? listarPartidas(session.steamId, 100) : Promise.resolve([]),
   ]);
+  const somaMinha = minhas.reduce((a, p) => ({ k: a.k + p.eu.kills, d: a.d + p.eu.deaths }), { k: 0, d: 0 });
+  const voce = session && somaMinha.d > 0 ? { kd: somaMinha.k / somaMinha.d, nome: "você" } : null;
 
   const visiveis = testers
     .map((t, ordem) => ({ ...t, ordem }))
@@ -98,6 +108,10 @@ export default async function ComunidadePage() {
           )}
         </div>
       </section>
+
+      <div className="mt-16">
+        <PanoramaComunidade panorama={panorama} voce={voce} />
+      </div>
 
       <section className="mt-16">
         <div className="flex items-baseline gap-3">

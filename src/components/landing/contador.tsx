@@ -2,10 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 
-/** Número que conta de zero até o valor quando entra na tela. */
+/**
+ * Número que conta de zero até o valor quando entra na tela.
+ *
+ * O HTML do servidor já sai com o valor final: sem JavaScript, para leitor
+ * de tela e para quem compartilha o link, o número é o certo (antes era 0).
+ * A contagem só roda se o número ainda está fora da tela ao montar.
+ */
 export function Contador({ ate, sufixo = "", className }: { ate: number; sufixo?: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [valor, setValor] = useState(0);
+  const [valor, setValor] = useState(ate);
 
   useEffect(() => {
     const el = ref.current;
@@ -14,6 +20,9 @@ export function Contador({ ate, sufixo = "", className }: { ate: number; sufixo?
       setValor(ate);
       return;
     }
+    const caixa = el.getBoundingClientRect();
+    if (caixa.top < window.innerHeight && caixa.bottom > 0) return;
+    setValor(0);
     const obs = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
       obs.disconnect();

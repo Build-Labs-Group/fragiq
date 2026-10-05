@@ -28,7 +28,7 @@ import { Regua } from "./graficos/regua";
 
 const FORMA = 20;
 
-export function PartidasPainel({ partidas }: { partidas: PartidaLinha[] }) {
+export function PartidasPainel({ partidas, titulo = "nas partidas abaixo" }: { partidas: PartidaLinha[]; titulo?: string }) {
   if (partidas.length < 2) return null;
   const n = partidas.length;
   const soma = partidas.reduce(
@@ -80,7 +80,7 @@ export function PartidasPainel({ partidas }: { partidas: PartidaLinha[] }) {
   return (
     <section className="space-y-3" aria-label="Resumo das partidas">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="hud">nas partidas abaixo</h2>
+        <h2 className="hud">{titulo}</h2>
         <RecorteChip recorte={recortePartidas(n)} />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
