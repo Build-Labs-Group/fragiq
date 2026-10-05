@@ -372,3 +372,44 @@ svg:has(.barra:hover) .barra rect:not([fill="transparent"]) {
 svg .barra:hover rect:not([fill="transparent"]) {
   opacity: 1;
 }
+
+/* ------------------------------- gráficos -------------------------------- */
+/* As peças de `components/graficos/`: uma animação de entrada por forma, a
+   mesma em todo o site, e o realce de hover. Movimento curto (≤ 0,7 s) e só
+   na entrada; o `prefers-reduced-motion` lá em cima zera tudo. */
+
+/* Régua e ranking: a barra cresce do zero. */
+@keyframes encher {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.regua-barra,
+.ranking-barra {
+  transform-origin: left;
+  animation: encher 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Medidor: o arco se desenha. */
+.medidor-arco {
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  animation: tracar 0.9s cubic-bezier(0.3, 0, 0.2, 1) 0.1s forwards;
+}
+
+/* Calendário: o dia sob o cursor ganha borda; o resto não muda. */
+.calendario .cel {
+  transition: stroke 0.1s ease;
+}
+.calendario .cel:hover {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+/* Área sob a linha do gráfico: entra junto com a linha, sem chamar atenção. */
+@keyframes surgir {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.area-surgir {
+  animation: surgir 0.9s ease 0.3s both;
+}

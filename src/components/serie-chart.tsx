@@ -71,6 +71,22 @@ export function SerieChart({ pontos, normal, lente = null, formatar, emPct = fal
         </>
       )}
 
+      {pontos.length >= 2 && !lente && (
+        <>
+          <defs>
+            <linearGradient id="fragiq-area-serie" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            className="area-surgir"
+            d={`${caminho} L${desenhados[desenhados.length - 1].x.toFixed(1)},${H - M.bottom} L${desenhados[0].x.toFixed(1)},${H - M.bottom} Z`}
+            fill="url(#fragiq-area-serie)"
+          />
+        </>
+      )}
+
       {pontos.length >= 2 && (
         <path d={caminho} fill="none" stroke={lente ? "var(--line)" : "var(--accent)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={lente ? undefined : "tracar"} />
       )}

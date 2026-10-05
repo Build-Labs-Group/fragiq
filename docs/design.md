@@ -241,6 +241,23 @@ pontos do modo ficam cheios em `--accent`, raio 4; os demais, raio 2,5 em
 `--ink-faint`. Não se desenha uma segunda linha ligando só os pontos do
 modo — ligaria sessões com semanas de buraco entre elas.
 
+**O kit `components/graficos/`** (out/2026). Toda forma nova de gráfico mora
+aqui, com a mesma moldura e as mesmas regras de cor:
+
+| Peça | Para quê | Cor |
+|---|---|---|
+| `Quadro` | a moldura: título + recorte · legenda (só com ≥ 2 séries) · desenho · rodapé com a escassez | — |
+| `RecorteChip` | de onde o número vem (2.9) | tinta neutra, nunca valência |
+| `Regua` | bullet: valor como barra, referência como traço | valência do delta |
+| `Medidor` | proporção 0–100 num arco de 240° (vitórias, headshot) | marca; valência se houver referência |
+| `Ranking` | barras horizontais por item (mapa, arma, jogador), colunas fixas | marca ou valência; amostra fraca apagada |
+| `Calendario` | um quadrado por dia, 26 semanas: constância e pausas | sequencial da marca em 4 degraus (quartis) |
+
+A área sob a linha (`serie-chart`, `sparkline`) é um gradiente da marca
+de 22 % a 0, só sem lente — com lente a linha é cinza e a área sumiria do
+mesmo jeito. As animações de entrada são uma por forma (`encher`,
+`tracar`, `crescer`, `surgir`) e o `prefers-reduced-motion` zera todas.
+
 ### 2.5 O chip de delta
 
 `src/components/delta-chip.tsx`, um para o site inteiro. `▲ 19%` /
@@ -302,6 +319,31 @@ enquanto se lê é um número em que não se confia.
 
 ---
 
+### 2.9 Recortes: todo número grande diz de onde vem
+
+A mesma conta mostrava K/D 1,66 no Resumo, 1,33 em Partidas e 0,71 como
+vitalício: três números certos que pareciam erro. `lib/recortes.ts` é o
+modelo — seis tipos (`sessao`, `partidas`, `demos`, `vitalicio`,
+`periodo`, `comunidade`), cada um com rótulo curto e detalhe completo — e
+`RecorteChip` a única forma de desenhá-lo. Um número grande sem recorte
+visível (no chip, no título do bloco ou na linha de referência) é bug.
+
+### 2.10 Cache por versão dos dados
+
+`lib/cache-dados.ts`. As leituras pesadas (`carregarFonte`,
+`listarPartidas`, o panorama da comunidade) ficam no data cache do Next
+(`unstable_cache`, em memória: `isrFlushToDisk: false`) com a **versão dos
+dados na chave** — contagem e instante mais recente de coletas, sessões,
+partidas, demos, insights e cadastro, lidos numa consulta barata a cada
+requisição. Evento novo → versão nova → releitura; sem evento, a tela sai da
+memória. Nunca serve dado velho em outra instância (a chave muda) e ninguém
+precisa lembrar de invalidar. No cliente, `staleTimes.dynamic = 30`: voltar
+a uma aba recém-vista não vai ao servidor, e toda ação que grava chama
+`router.refresh()`.
+
+As abas e a lente ficam presas sob o cabeçalho ao rolar (`sticky` no
+layout do jogo).
+
 ## 3. O modo de jogo é uma lente
 
 `src/lib/modo.ts` — o modo é **global** (URL `?modo=`, com o cookie
@@ -359,7 +401,11 @@ falta**. Largura `max-w-6xl`.
    tempo jogado. Três números em `num` 3xl/5xl, cada um com chip de delta e
    **uma** linha de referência. No rodapé, as notas que qualificam a leitura
    (amostra curta, rounds em mapa que a Steam não conta) como chips, não
-   como parágrafo. É o único `glow` da tela.
+   como parágrafo. É o único `glow` da tela. Sob cada número, a **régua**
+   (valor × normal) e, ao lado de "Última sessão", o **selo** do insight
+   `sessao.classificacao` ("Acima do seu normal"). Os outros três insights
+   da sessão (`kd/adr/hs.vs.normal`) não aparecem no Resumo: eram o hero
+   repetido;
 3. **Análise** (5): manchete e ação, sem repetir os números do hero.
 4. **Estatísticas**: seis cartões (2.3), com link para a aba.
 5. **Atividade · 30 dias** (`atividade.tsx`): cinco contagens — sessões,
@@ -367,6 +413,7 @@ falta**. Largura `max-w-6xl`.
    anteriores, com chip **neutro** (volume não tem valência:
    `melhorQuando: "nenhuma"`), e as barras de rounds por dia, pelo dia em
    que a sessão fechou. Com lente, a parte do modo acende e o resto apaga.
+   Ao lado, o **calendário** de 26 semanas (rounds por dia).
 6. **Por modo** (3).
 
 As leituras de K/D, headshot e modo saíram do Resumo: eram o hero em prosa.

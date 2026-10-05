@@ -15,13 +15,15 @@ import type { Normal } from "./series";
  * - sem base não há chip: a linha de referência diz por quê. `0%` por falta
  *   de base não existe.
  */
+export type Valencia = "good" | "bad" | "neutral";
+
 export type Delta =
   | {
       estado: "ok";
       valor: number;
       unidade: "%" | "pp";
       direcao: "sobe" | "desce" | "igual";
-      valencia: "good" | "bad" | "neutral";
+      valencia: Valencia;
       fraco: boolean;
     }
   | { estado: "sem-base"; motivo: "sem-normal" | "poucas-sessoes" | "sem-amostra" };

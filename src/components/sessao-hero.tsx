@@ -7,6 +7,8 @@ import { formatarDuracao, formatarQuando, formatarStat } from "@/lib/formato";
 import { DeltaChip } from "./delta-chip";
 import { MarcarModo } from "./marcar-modo";
 import { cn } from "@/lib/utils";
+import { Regua } from "./graficos/regua";
+import type { InsightLinha } from "./insight";
 
 /**
  * A última sessão em três números, grandes.
@@ -20,7 +22,20 @@ import { cn } from "@/lib/utils";
  */
 export type NormaisDoHero = { kd: Normal; adr: Normal; hs: Normal };
 
-export function SessaoHero({ sessao, normais, notas = [], lente }: { sessao: Sessao; normais: NormaisDoHero; notas?: Leitura[]; lente: string | null }) {
+export function SessaoHero({
+  sessao,
+  normais,
+  notas = [],
+  lente,
+  classificacao = null,
+}: {
+  sessao: Sessao;
+  normais: NormaisDoHero;
+  notas?: Leitura[];
+  lente: string | null;
+  /** O insight `sessao.classificacao`, lido do banco: o veredito da sessão numa linha. */
+  classificacao?: InsightLinha | null;
+}) {
   const stats = {
     kd: CS2_PANEL.find((s) => s.key === "kd")!,
     adr: CS2_PANEL.find((s) => s.key === "adr")!,
@@ -39,6 +54,18 @@ export function SessaoHero({ sessao, normais, notas = [], lente }: { sessao: Ses
       <div className="relative p-5 sm:p-7">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <span className="hud">Última sessão</span>
+          {classificacao && (
+            <span
+              className={cn(
+                "num inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                classificacao.tom === "BOM" ? "bg-good-soft text-good" : classificacao.tom === "RUIM" ? "bg-bad-soft text-bad" : "bg-surface-2 text-ink-muted",
+              )}
+              title={classificacao.linha}
+            >
+              <span aria-hidden>{classificacao.tom === "BOM" ? "▲" : classificacao.tom === "RUIM" ? "▼" : "≈"}</span>
+              {classificacao.linha}
+            </span>
+          )}
           {sessao.modo ? (
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs ring-1", lente && lente === sessao.modoId ? "bg-accent-soft text-accent ring-accent/40" : "text-ink-muted ring-line")}>
               ● {sessao.modo}
@@ -67,7 +94,15 @@ export function SessaoHero({ sessao, normais, notas = [], lente }: { sessao: Ses
                   <p className="num text-3xl font-semibold sm:text-5xl">{n.valor === null ? "—" : formatarStat(n.stat, n.valor)}</p>
                   <DeltaChip delta={delta} tamanho="md" />
                 </div>
-                <p className="num mt-1 truncate text-xs text-ink-faint" title={referencia(n.normal, n.stat)}>
+                <Regua
+                  className="mt-3 max-w-56"
+                  valor={n.valor}
+                  referencia={n.normal.tipo === "nenhum" ? null : n.normal.valor}
+                  valencia={delta.estado === "ok" ? delta.valencia : null}
+                  emPct={n.stat.unit === "%"}
+                />
+                <p className="num mt-2 truncate text-xs text-ink-faint" title={referencia(n.normal, n.stat)}>
+                  <span className="mr-1 inline-block h-2.5 w-0.5 translate-y-px rounded-full bg-ink align-baseline" aria-hidden />
                   {referencia(n.normal, n.stat)}
                 </p>
               </div>

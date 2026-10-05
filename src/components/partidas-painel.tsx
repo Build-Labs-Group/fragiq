@@ -5,6 +5,10 @@ import { formatarQuando } from "@/lib/sessoes";
 import { rotularMapa } from "@/lib/cs2-labels";
 import { identidadeDoMapa } from "@/lib/mapas";
 import { cn } from "@/lib/utils";
+import { recortePartidas } from "@/lib/recortes";
+import { RecorteChip } from "./graficos/recorte";
+import { Medidor } from "./graficos/medidor";
+import { Regua } from "./graficos/regua";
 
 /**
  * O painel da aba Partidas: o que as partidas listadas abaixo somam.
@@ -40,11 +44,19 @@ export function PartidasPainel({ partidas }: { partidas: PartidaLinha[] }) {
   );
   const e = n - soma.v - soma.d;
 
-  const tiles = [
-    { rotulo: "vitórias", valor: `${formatarNumero((soma.v / n) * 100)}%`, sub: `${soma.v}V · ${soma.d}D${e ? ` · ${e}E` : ""}` },
-    { rotulo: "K/D", valor: soma.deaths ? formatarNumero(soma.kills / soma.deaths, 2) : "—", sub: `${formatarNumero(soma.kills)} kills · ${formatarNumero(soma.deaths)} mortes` },
-    { rotulo: "headshot", valor: soma.kills ? `${formatarNumero((soma.hs / soma.kills) * 100)}%` : "—", sub: `${formatarNumero(soma.hs)} de ${formatarNumero(soma.kills)}` },
-    { rotulo: "kills por round", valor: soma.rounds ? formatarNumero(soma.kills / soma.rounds, 2) : "—", sub: `${formatarNumero(soma.rounds)} rounds` },
+  const kd = soma.deaths ? soma.kills / soma.deaths : null;
+  const kpr = soma.rounds ? soma.kills / soma.rounds : null;
+  // Vitórias e headshot são proporções: medidor. K/D e kills por round são
+  // razões sem teto: número grande e uma régua contra a referência fixa do
+  // jogo (1,00 de K/D é trocar uma por uma; 0,68 kill por round é a média que
+  // o rating 1.0 da HLTV usa como base) — referência dita, nunca escondida.
+  const medidores = [
+    { rotulo: "vitórias", pct: (soma.v / n) * 100, sub: `${soma.v}V · ${soma.d}D${e ? ` · ${e}E` : ""}`, valencia: soma.v >= soma.d ? ("good" as const) : ("bad" as const) },
+    { rotulo: "headshot", pct: soma.kills ? (soma.hs / soma.kills) * 100 : null, sub: `${formatarNumero(soma.hs)} de ${formatarNumero(soma.kills)}`, valencia: null },
+  ];
+  const razoes = [
+    { rotulo: "K/D", valor: kd, texto: kd === null ? "—" : formatarNumero(kd, 2), ref: 1, refTexto: "1,00 = troca uma por uma", sub: `${formatarNumero(soma.kills)} kills · ${formatarNumero(soma.deaths)} mortes` },
+    { rotulo: "kills por round", valor: kpr, texto: kpr === null ? "—" : formatarNumero(kpr, 2), ref: 0.68, refTexto: "0,68 = base do rating 1.0 da HLTV", sub: `${formatarNumero(soma.rounds)} rounds` },
   ];
 
   // Mais antiga → mais recente, como se lê uma sequência.
@@ -67,16 +79,34 @@ export function PartidasPainel({ partidas }: { partidas: PartidaLinha[] }) {
 
   return (
     <section className="space-y-3" aria-label="Resumo das partidas">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="hud">nas {n} partidas abaixo</h2>
-        <p className="num text-xs text-ink-faint">placar dos dez, do Game Coordinator</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="hud">nas partidas abaixo</h2>
+        <RecorteChip recorte={recortePartidas(n)} />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {tiles.map((t, i) => (
-          <div key={t.rotulo} className="entrar rounded-2xl bg-surface p-4 ring-1 ring-line" style={{ "--i": i } as React.CSSProperties}>
-            <p className="hud">{t.rotulo}</p>
-            <p className="num mt-2 text-2xl font-semibold">{t.valor}</p>
-            <p className="num mt-1 text-xs text-ink-faint">{t.sub}</p>
+        {medidores.map((m, i) => (
+          <div key={m.rotulo} className="entrar flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line" style={{ "--i": i } as React.CSSProperties}>
+            <Medidor pct={m.pct} valencia={m.valencia} rotulo={m.rotulo} className="h-20 w-24 shrink-0" />
+            <div className="min-w-0">
+              <p className="hud">{m.rotulo}</p>
+              <p className="num mt-1 text-xs text-ink-faint">{m.sub}</p>
+            </div>
+          </div>
+        ))}
+        {razoes.map((r, i) => (
+          <div key={r.rotulo} className="entrar rounded-2xl bg-surface p-4 ring-1 ring-line" style={{ "--i": i + 2 } as React.CSSProperties}>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="hud">{r.rotulo}</p>
+              <p className="num text-[11px] text-ink-faint" title={r.refTexto}>
+                <span className="mr-1 inline-block h-2.5 w-0.5 translate-y-px rounded-full bg-ink align-baseline" aria-hidden />
+                {formatarNumero(r.ref, 2)}
+              </p>
+            </div>
+            <p className="num mt-2 text-2xl font-semibold">{r.texto}</p>
+            <Regua className="mt-2" valor={r.valor} referencia={r.ref} valencia={r.valor === null ? null : r.valor >= r.ref ? "good" : "bad"} />
+            <p className="num mt-1.5 truncate text-[11px] text-ink-faint" title={r.refTexto}>
+              {r.sub}
+            </p>
           </div>
         ))}
       </div>

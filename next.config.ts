@@ -68,6 +68,15 @@ const nextConfig: NextConfig = {
   // `env` fixa FRAGIQ_ALVO no build, para o layout saber que não está na Vercel.
   ...(paraAws ? { output: "standalone" as const, images: { unoptimized: true }, env: { FRAGIQ_ALVO: "aws" } } : {}),
   poweredByHeader: false,
+  experimental: {
+    // O data cache (`src/lib/cache-dados.ts`) fica só na memória da
+    // instância: o disco da Lambda é só leitura, e a chave já carrega a
+    // versão dos dados, então não há o que persistir entre instâncias.
+    isrFlushToDisk: false,
+    // Voltar a uma aba vista há menos de 30 s não vai ao servidor. Sincronizar,
+    // marcar modo e as outras ações chamam `router.refresh()`, que limpa isto.
+    staleTimes: { dynamic: 30, static: 300 },
+  },
   async redirects() {
     // As duas URLs antigas já circularam; resolvidas aqui, na borda, elas
     // não custam uma renderização nem um salto a mais pelo servidor.
