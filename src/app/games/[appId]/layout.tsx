@@ -97,8 +97,10 @@ export default async function GameLayout({
           </div>
           {/* As abas e a lente ficam presas sob o cabeçalho do site ao rolar:
               trocar de área ou de modo no meio de uma página longa não exige
-              voltar ao topo. A altura do cabeçalho é a de `SiteHeader`. */}
-          <div className="sticky top-[57px] z-10 border-b border-line bg-surface/90 pt-4 backdrop-blur-md">
+              voltar ao topo. A altura do cabeçalho é a de `SiteHeader` no
+              tablet e no desktop; no celular ele tem duas linhas e as abas
+              presas comeriam meia tela, então lá elas rolam junto. */}
+          <div className="z-10 border-b border-line bg-surface/90 pt-4 backdrop-blur-md sm:sticky sm:top-[57px]">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <Suspense>
                 <NavJogo appId={appId} abas={lente.abas} cobertura={lente.cobertura} doCookie={jar.get(COOKIE_MODO)?.value} botAmigo={botAmigo} />

@@ -252,11 +252,23 @@ aqui, com a mesma moldura e as mesmas regras de cor:
 | `Medidor` | proporção 0–100 num arco de 240° (vitórias, headshot) | marca; valência se houver referência |
 | `Ranking` | barras horizontais por item (mapa, arma, jogador), colunas fixas | marca ou valência; amostra fraca apagada |
 | `Calendario` | um quadrado por dia, 26 semanas: constância e pausas | sequencial da marca em 4 degraus (quartis) |
+| `GradeHoras` | dia da semana × hora (Brasília) | a mesma escala do calendário |
+| `Distribuicao` | histograma da comunidade com o marcador "você" e a mediana | barras cinza (contexto), marcador da marca |
+| `Pirulitos` | cada item contra a própria referência (sessão × normal dela) | haste e bola na valência; vazada = amostra fraca |
+| `Espelho` | dois lados por métrica, barras do centro (os dois times) | quem vence a linha cheio, o outro apagado |
+
+O chip de recorte das distribuições mostra o N que o desenho usa (quem tem
+10+ rounds), não o total de jogadores vistos — os dois apareciam lado a lado
+com números diferentes.
 
 A área sob a linha (`serie-chart`, `sparkline`) é um gradiente da marca
 de 22 % a 0, só sem lente — com lente a linha é cinza e a área sumiria do
 mesmo jeito. As animações de entrada são uma por forma (`encher`,
 `tracar`, `crescer`, `surgir`) e o `prefers-reduced-motion` zera todas.
+
+**Insight em linha**: o tom vai num filete à esquerda e o texto fica em tinta
+neutra. Com a linha inteira verde ou vermelha, "caindo 4 %" e "+85 % vs
+normal" gritavam opostos com o mesmo volume.
 
 ### 2.5 O chip de delta
 
@@ -464,6 +476,12 @@ modo também tem chip, porque a comparação dela não depende mais da aba. A
 linha inteira do insight vai no `title` da célula. Sessão sem insight
 materializado fica sem chip (§4.4: vazio é vazio).
 
+### 4.3.1 Sessões — o gráfico
+
+Acima da tabela, `Pirulitos`: as 40 sessões mais recentes, cada uma contra
+o normal que o chip dela usa (o mesmo insight `kd.vs.normal`). Com lente,
+as de outro modo ficam apagadas.
+
 ### 4.4 Partidas — `partidas/page.tsx`
 
 Partidas oficiais, uma a uma, com o placar dos dez — o que a Web API não dá.
@@ -558,6 +576,14 @@ leitura e comparação, sem expor nada da curva (que continua do dono):
   perfil público**; o resto é agregado sem nome.
 - **Landing**: os números do topo são os do panorama, ao vivo, e saem do
   servidor já com o valor final (o contador só anima o que está fora da tela).
+
+### 4.10 Uma partida — `/partida/[id]`
+
+Entre a faixa de rounds e os placares: **os dois times lado a lado**
+(`Espelho`: kills, HS, MVPs e, com demo, ADR e KAST médios, aberturas,
+trocas, clutches e dano de granada) e, para quem jogou, **você contra o
+lobby** — K/D, ADR, KAST e HS com a régua contra a média dos outros nove. O
+meu time (ou o vencedor, para quem não jogou) fica na cor da marca.
 
 ## 5. O cartão do analista
 

@@ -70,7 +70,7 @@ export function PartidasTabela({ partidas, publica = false }: { partidas: Partid
                 </div>
 
                 <div className="num w-12 shrink-0 text-right sm:w-14">
-                  <p className={cn("tnum text-sm font-medium", kd >= 1 && "text-accent")}>{kd.toFixed(2).replace(".", ",")}</p>
+                  <p className={cn("tnum text-sm font-medium", kd >= 1 && "text-good")}>{kd.toFixed(2).replace(".", ",")}</p>
                   <p className="mt-0.5 text-[11px] text-ink-faint">K/D</p>
                 </div>
 

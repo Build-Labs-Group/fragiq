@@ -38,14 +38,15 @@ export function leiturasPublicas(partidas: PartidaLinha[], comunidade: { kd: num
   const out: LeituraPublica[] = [];
   const soma = partidas.reduce((a, p) => ({ k: a.k + p.eu.kills, d: a.d + p.eu.deaths, hs: a.hs + p.eu.hs }), { k: 0, d: 0, hs: 0 });
 
-  // Posição na comunidade. "Top X%" e não "melhor que Y%": é como quem joga fala.
+  // Posição na comunidade. Acima da mediana, "top X%" — é como quem joga
+  // fala; abaixo dela, "top 66%" soa como elogio torto, e vira "melhor que Y%".
   const kd = kdDe(soma.k, soma.d);
   const pKd = percentil(comunidade.kd, kd);
   if (pKd !== null && comunidade.kd.length >= 20) {
     out.push({
       id: "posicao.kd",
       titulo: "K/D na fila",
-      valor: `top ${Math.max(1, Math.round(100 - pKd))}%`,
+      valor: posicao(pKd),
       linha: `K/D ${formatarNumero(kd, 2)} entre ${formatarNumero(comunidade.kd.length)} jogadores vistos`,
       tom: pKd >= 60 ? "bom" : pKd <= 40 ? "ruim" : "neutro",
       pct: pKd,
@@ -57,7 +58,7 @@ export function leiturasPublicas(partidas: PartidaLinha[], comunidade: { kd: num
     out.push({
       id: "posicao.hs",
       titulo: "Headshot na fila",
-      valor: `top ${Math.max(1, Math.round(100 - pHs))}%`,
+      valor: posicao(pHs),
       linha: `${formatarNumero(hs)}% de HS entre ${formatarNumero(comunidade.hs.length)} jogadores vistos`,
       tom: pHs >= 60 ? "bom" : pHs <= 40 ? "ruim" : "neutro",
       pct: pHs,
@@ -123,6 +124,10 @@ export function leiturasPublicas(partidas: PartidaLinha[], comunidade: { kd: num
   }
 
   return out;
+}
+
+function posicao(pct: number): string {
+  return pct >= 50 ? `top ${Math.max(1, Math.round(100 - pct))}%` : `melhor que ${Math.round(pct)}%`;
 }
 
 function agrupar(partidas: PartidaLinha[], chave: (p: PartidaLinha) => string | null) {

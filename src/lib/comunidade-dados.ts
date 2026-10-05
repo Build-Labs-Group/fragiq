@@ -27,6 +27,8 @@ import { lerComVersao } from "./cache-dados";
 export const MIN_PARTIDAS_RANKING = 5;
 /** Mínimo de rounds para um jogador entrar nas distribuições. */
 export const MIN_ROUNDS_DISTRIBUICAO = 10;
+/** O corte das distribuições, dito no recorte de cada gráfico. */
+export const NOTA_DISTRIBUICAO = `Jogadores com pelo menos ${MIN_ROUNDS_DISTRIBUICAO} rounds em partida oficial gravada`;
 
 export type Panorama = {
   totais: { partidas: number; jogadores: number; rounds: number; contas: number; demos: number; desde: string | null };

@@ -88,3 +88,12 @@ describe("estatística", () => {
     expect(h.map((b) => b.n)).toEqual([2, 3]);
   });
 });
+
+describe("posição abaixo da mediana", () => {
+  it("vira 'melhor que', nunca 'top 80%'", () => {
+    const ps = Array.from({ length: 6 }, () => partida({ k: 12, d: 20 }));
+    const kd = leiturasPublicas(ps, comunidade(100)).find((l) => l.id === "posicao.kd")!;
+    expect(kd.valor).toBe("melhor que 11%"); // 10 abaixo + metade do empate em 0,60, de 100
+    expect(kd.tom).toBe("ruim");
+  });
+});

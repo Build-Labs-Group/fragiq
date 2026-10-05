@@ -16,7 +16,7 @@ export function LeiturasPublicasGrade({ leituras }: { leituras: LeituraPublica[]
       {leituras.map((l, i) => (
         <li key={l.id} className="entrar rounded-2xl bg-surface p-4 ring-1 ring-line" style={{ "--i": i } as React.CSSProperties}>
           <p className="hud">{l.titulo}</p>
-          <p className={cn("num mt-1.5 text-2xl font-semibold capitalize", l.tom === "bom" && "text-good", l.tom === "ruim" && "text-bad")}>{l.valor}</p>
+          <p className={cn("num mt-1.5 text-2xl font-semibold first-letter:uppercase", l.tom === "bom" && "text-good", l.tom === "ruim" && "text-bad")}>{l.valor}</p>
           {l.pct !== undefined && (
             <div className="relative mt-2 h-1.5 rounded-full bg-gradient-to-r from-bad-soft via-surface-2 to-good-soft ring-1 ring-line-soft" aria-hidden>
               <span className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent ring-2 ring-surface" style={{ left: `${Math.max(2, Math.min(98, l.pct))}%` }} />
