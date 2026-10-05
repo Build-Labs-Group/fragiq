@@ -17,7 +17,7 @@ import { filtroDoModo, rotuloDoModo, TUDO } from "@/lib/modo";
 import { abasDoUsuario, modoDaRequisicao, type SearchParams } from "@/lib/modo-servidor";
 import { insightsDaUltimaSessao, insightsDoModo } from "@/lib/insights/ler";
 import { Insight } from "@/components/insight";
-import { formatarQuando, listarSessoes } from "@/lib/sessoes";
+import { listarSessoes } from "@/lib/sessoes";
 import { Atividade } from "@/components/atividade";
 
 export const dynamic = "force-dynamic";
@@ -86,28 +86,28 @@ export default async function ResumoPage({ params, searchParams }: { params: Pro
       )}
 
       {sessao ? (
-        <SessaoHero sessao={sessao} normais={normaisDoHero(rows, { modo: lente }, sessao.snapshotId)} notas={notas} lente={lente} />
+        <SessaoHero
+          sessao={sessao}
+          normais={normaisDoHero(rows, { modo: lente }, sessao.snapshotId)}
+          notas={notas}
+          lente={lente}
+          classificacao={daSessao?.insights.find((i) => i.regra === "sessao.classificacao") ?? null}
+        />
       ) : modo !== TUDO ? (
         <Estado titulo={`Sem sessões de ${rotuloDoModo(modo)}`} texto="A próxima partida nesse modo aparece aqui." acao={{ rotulo: "Ver tudo", href: `/games/${appId}` }} />
       ) : rows.length === 1 ? (
         <Estado titulo="Ponto de partida guardado" texto="Jogue uma partida de CS2: quando ela terminar, a primeira sessão aparece aqui com o que mudou." />
       ) : null}
 
-      {(daSessao || doModo.length > 0) && (
-        <Secao titulo="Insights">
+      {/* Os insights da última sessão (veredito e os três "vs normal") já
+          estão no herói — o veredito como selo, os três como número, chip e
+          régua. Repeti-los aqui era o mesmo número três vezes na mesma dobra
+          (docs/design.md §1, "um número, um lugar"). Aqui fica só o que o
+          herói não diz: forma, tendência, mapas, armas, consistência. */}
+      {doModo.length > 0 && (
+        <Secao titulo={`Forma e tendência · ${lente ? rotuloDoModo(modo) : "tudo"}`}>
           <div className="grid gap-2 md:grid-cols-2">
-            {daSessao && (
-              <div className="min-w-0 space-y-2">
-                <p className="hud text-xs text-ink-faint" suppressHydrationWarning>última sessão · {formatarQuando(daSessao.ate)}</p>
-                {daSessao.insights.map((i) => <Insight key={i.id} insight={i} />)}
-              </div>
-            )}
-            {doModo.length > 0 && (
-              <div className="min-w-0 space-y-2">
-                <p className="hud text-xs text-ink-faint">{lente ? rotuloDoModo(modo) : "tudo"} · forma e tendência</p>
-                {doModo.map((i) => <Insight key={i.id} insight={i} />)}
-              </div>
-            )}
+            {doModo.map((i) => <Insight key={i.id} insight={i} />)}
           </div>
         </Secao>
       )}

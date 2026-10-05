@@ -68,7 +68,7 @@ export default async function GameLayout({
 
       {userGame ? (
         <>
-          <div className="border-b border-line bg-surface">
+          <div className="bg-surface">
             <div className="mx-auto max-w-6xl px-4 sm:px-6">
               <div className="flex items-center gap-4 pt-6">
                 <Image
@@ -93,11 +93,16 @@ export default async function GameLayout({
                   </p>
                 </div>
               </div>
-              <div className="mt-4">
-                <Suspense>
-                  <NavJogo appId={appId} abas={lente.abas} cobertura={lente.cobertura} doCookie={jar.get(COOKIE_MODO)?.value} botAmigo={botAmigo} />
-                </Suspense>
-              </div>
+            </div>
+          </div>
+          {/* As abas e a lente ficam presas sob o cabeçalho do site ao rolar:
+              trocar de área ou de modo no meio de uma página longa não exige
+              voltar ao topo. A altura do cabeçalho é a de `SiteHeader`. */}
+          <div className="sticky top-[57px] z-10 border-b border-line bg-surface/90 pt-4 backdrop-blur-md">
+            <div className="mx-auto max-w-6xl px-4 sm:px-6">
+              <Suspense>
+                <NavJogo appId={appId} abas={lente.abas} cobertura={lente.cobertura} doCookie={jar.get(COOKIE_MODO)?.value} botAmigo={botAmigo} />
+              </Suspense>
             </div>
           </div>
           <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>

@@ -8,6 +8,7 @@ import { authCodeValido, decodificarShareCode, normalizarShareCode, shareCodeVal
 import { getPlayerSummaries } from "./steam/api";
 import { CogniflowApiError, invocar } from "./cogniflow-api";
 import { registrar, reportarErro } from "./eventos";
+import { lerComVersao, reviverDatas, versaoDasPartidas } from "./cache-dados";
 
 /**
  * Partidas detalhadas: o caminho que o csstats usa, com o mínimo de atrito.
@@ -414,8 +415,26 @@ export type PartidaLinha = {
   conhecidos: { steamId: string; time: number }[];
 };
 
-/** As partidas gravadas de um SteamID, mais recente primeiro; `modo` recorta pelo submenu. */
+/**
+ * As partidas gravadas de um SteamID, mais recente primeiro; `modo` recorta pelo submenu.
+ *
+ * Guardadas pela versão das partidas do SteamID (`cache-dados.ts`): uma
+ * partida nova ou uma demo lida muda a versão. O teto de 10 min cobre o que
+ * a versão não vê — um dos outros nove criar conta (o link `conhecidos`).
+ */
 export async function listarPartidas(steamId: string, limite = 30, modo?: string | null): Promise<PartidaLinha[]> {
+  const versao = await versaoDasPartidas(steamId);
+  return lerComVersao({
+    nome: "partidas",
+    chave: [steamId, limite, modo ?? null],
+    versao,
+    revalidate: 600,
+    ler: () => lerPartidas(steamId, limite, modo),
+    reviver: (linhas) => linhas.map((l) => reviverDatas(l, ["jogadaEm"])),
+  });
+}
+
+async function lerPartidas(steamId: string, limite: number, modo?: string | null): Promise<PartidaLinha[]> {
   const linhas = await prisma.matchPlayer.findMany({
     where: { steamId, match: { status: "DONE", ...(modo ? { modo } : {}) } },
     orderBy: { match: { jogadaEm: "desc" } },

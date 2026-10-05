@@ -47,6 +47,17 @@ export function Sparkline({ pontos, normal, lente = null, emPct = false, casas =
           sem sessões
         </text>
       )}
+      {pontos.length >= 2 && !lente && (
+        <>
+          <defs>
+            <linearGradient id="fragiq-area-spark" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={`${caminho} L${desenhados[desenhados.length - 1].x.toFixed(1)},${H} L${desenhados[0].x.toFixed(1)},${H} Z`} fill="url(#fragiq-area-spark)" />
+        </>
+      )}
       {pontos.length >= 2 && (
         <path d={caminho} fill="none" stroke={corLinha} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       )}

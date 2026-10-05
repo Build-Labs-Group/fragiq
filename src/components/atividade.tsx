@@ -4,6 +4,8 @@ import { formatarDia, formatarNumero, getLocale } from "@/lib/formato";
 import { rotularModo } from "@/lib/cs2-labels";
 import { DeltaChip } from "./delta-chip";
 import { Secao } from "./secao";
+import { Calendario, type DiaDoCalendario } from "./graficos/calendario";
+import { Quadro } from "./graficos/quadro";
 
 /**
  * Quanto a pessoa jogou: os últimos 30 dias contra os 30 anteriores, e o
@@ -97,8 +99,33 @@ export function Atividade({ sessoes, lente, agora }: { sessoes: Sessao[]; lente:
           );
         })}
       </div>
-      <BarrasDoMes dias={dias} lente={lente} doModoNoMes={doModoNoMes} total={a.rounds} />
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <BarrasDoMes dias={dias} lente={lente} doModoNoMes={doModoNoMes} total={a.rounds} />
+        <Quadro titulo="quando você joga · 26 semanas" className="entrar" extra={lente ? `só ${rotularModo(lente)}` : undefined}>
+          <Calendario dias={porDia(sessoes, chave, lente)} agora={agora} unidade="rounds" />
+        </Quadro>
+      </div>
     </Secao>
+  );
+}
+
+/** Rounds por dia de calendário (o dia em que a sessão fechou), com a lente como corte. */
+function porDia(sessoes: Sessao[], chave: (d: Date) => string, lente: string | null): Map<string, DiaDoCalendario> {
+  const dias = new Map<string, { valor: number; sessoes: number; partidas: number }>();
+  for (const s of sessoes) {
+    if (lente && s.modoId !== lente) continue;
+    const k = chave(s.ate);
+    const d = dias.get(k) ?? { valor: 0, sessoes: 0, partidas: 0 };
+    d.valor += s.rounds;
+    d.sessoes++;
+    d.partidas += s.partidas ?? 0;
+    dias.set(k, d);
+  }
+  return new Map(
+    [...dias].map(([k, d]) => [
+      k,
+      { valor: d.valor, detalhe: `${d.sessoes} ${d.sessoes === 1 ? "sessão" : "sessões"}${d.partidas ? ` · ${d.partidas} ${d.partidas === 1 ? "partida" : "partidas"}` : ""}` },
+    ]),
   );
 }
 
@@ -130,7 +157,7 @@ function BarrasDoMes({
   const marcas = dias.filter((_, i) => (dias.length - 1 - i) % 7 === 0);
 
   return (
-    <figure className="entrar mt-3 rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5" style={{ "--i": 5 } as React.CSSProperties}>
+    <figure className="entrar rounded-2xl bg-surface p-4 ring-1 ring-line sm:p-5" style={{ "--i": 5 } as React.CSSProperties}>
       <figcaption className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="hud">rounds por dia</span>
         <span className="tnum flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-faint">
