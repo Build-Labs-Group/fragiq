@@ -10,6 +10,7 @@ import { Revelar } from "@/components/landing/revelar";
 import { Contador } from "@/components/landing/contador";
 import { Tilt } from "@/components/landing/tilt";
 import { DemoHud } from "@/components/landing/demo-hud";
+import { carregarPanorama } from "@/lib/comunidade-dados";
 
 export const dynamic = "force-dynamic";
 
@@ -145,26 +146,52 @@ function Hero({ erro }: { erro?: string }) {
 
 /* --------------------------------- números -------------------------------- */
 
-const NUMEROS = [
+const NUMEROS_DO_PRODUTO = [
   { ate: 178, rotulo: "estatísticas em série temporal" },
   { ate: 94, rotulo: "por arma" },
   { ate: 30, rotulo: "por mapa" },
   { ate: 1, sufixo: "/dia", rotulo: "coleta automática, sem instalar nada" },
 ];
 
-function Numeros() {
+/**
+ * Números de verdade, ao vivo: o que o FragIQ já leu das partidas de todo
+ * mundo (o mesmo panorama da Comunidade, do cache por versão). Enquanto
+ * não há partida gravada, os números do produto ficam no lugar.
+ */
+async function Numeros() {
+  const { totais } = await carregarPanorama().catch(() => ({ totais: null }));
+  const aoVivo = totais && totais.partidas > 0;
+  const numeros = aoVivo
+    ? [
+        { ate: totais.partidas, rotulo: "partidas oficiais lidas, com os dez jogadores" },
+        { ate: totais.jogadores, rotulo: "jogadores vistos em partida" },
+        { ate: totais.rounds, rotulo: "rounds no banco" },
+        { ate: 178, rotulo: "estatísticas em série temporal" },
+      ]
+    : NUMEROS_DO_PRODUTO;
   return (
     <section className="border-b border-line">
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 sm:grid-cols-4">
-        {NUMEROS.map((n, i) => (
+        {numeros.map((n, i) => (
           <Revelar key={n.rotulo} atraso={i * 80}>
             <p className="num text-4xl font-semibold text-accent">
-              <Contador ate={n.ate} sufixo={n.sufixo} />
+              <Contador ate={n.ate} sufixo={"sufixo" in n ? (n.sufixo as string) : undefined} />
             </p>
             <p className="mt-1 text-sm text-ink-muted">{n.rotulo}</p>
           </Revelar>
         ))}
       </div>
+      {aoVivo && (
+        <div className="mx-auto max-w-6xl px-6 pb-10">
+          <Link href="/comunidade" className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-accent">
+            <span className="relative mr-1 flex size-2" aria-hidden>
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-good opacity-60" />
+              <span className="relative inline-flex size-2 rounded-full bg-good" />
+            </span>
+            ao vivo · mapas, economia e a distribuição de K/D da fila <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+      )}
     </section>
   );
 }

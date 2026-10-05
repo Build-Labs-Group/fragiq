@@ -60,7 +60,7 @@ export function Ranking({
               <span className="tnum hidden text-right text-[11px] text-ink-faint sm:block">{l.base}</span>
             </>
           );
-          const classe = "grid grid-cols-[minmax(0,8.5rem)_1fr_3.5rem] items-center gap-3 rounded-lg px-2 py-1.5 sm:grid-cols-[minmax(0,9rem)_1fr_3.5rem_4.5rem]";
+          const classe = "grid grid-cols-[minmax(0,8.5rem)_1fr_3.5rem] items-center gap-3 rounded-lg px-2 py-1.5 sm:grid-cols-[minmax(0,9rem)_1fr_3.5rem_5.5rem]";
           return (
             <li key={l.id} title={[l.rotulo, l.texto, l.base, l.fraco ? "amostra pequena" : null].filter(Boolean).join(" · ")}>
               {l.href ? (

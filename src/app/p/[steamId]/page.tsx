@@ -23,6 +23,17 @@ import { carregarPerfilCS } from "@/lib/perfil-cs";
 import { DemoPublicaBloco } from "@/components/demo-publica";
 import { ArmaIcone } from "@/components/arma-icone";
 import { MapaVisual } from "@/components/mapa-visual";
+import { PartidasPainel } from "@/components/partidas-painel";
+import { LeiturasPublicasGrade } from "@/components/leituras-publicas";
+import { Quadro } from "@/components/graficos/quadro";
+import { RecorteChip } from "@/components/graficos/recorte";
+import { Distribuicao } from "@/components/graficos/distribuicao";
+import { Calendario, type DiaDoCalendario } from "@/components/graficos/calendario";
+import { Ranking } from "@/components/graficos/ranking";
+import { carregarPanorama } from "@/lib/comunidade-dados";
+import { leiturasPublicas } from "@/lib/leituras-publicas";
+import { recorteComunidade, recorteDemos, recortePartidas, recorteVitalicio, type Recorte } from "@/lib/recortes";
+import { formatarNumero, getLocale } from "@/lib/formato";
 
 export const dynamic = "force-dynamic";
 
@@ -85,9 +96,11 @@ export default async function PerfilPublicoPage({
   // dos dez); mostramos o que já temos gravado deste SteamID.
   // O scoreboard do GC existe para os dez de cada partida, privados ou não:
   // é o que resta para quem a Steam esconde, e por isso vem antes do estado.
-  const [partidas, cs] = comJogador
+  // Até 100 partidas: a tabela mostra 10, mas as leituras, o painel e o
+  // calendário precisam de amostra. A lista sai do cache por versão.
+  const [partidas, cs, panorama] = comJogador
     ? await Promise.all([
-        listarPartidas(entrada, 30),
+        listarPartidas(entrada, 100),
         carregarPerfilCS(entrada, {
           userId: alvo?.id ?? null,
           horasConhecidas: perfil.estado === "ok",
@@ -95,8 +108,9 @@ export default async function PerfilPublicoPage({
           // é lido aqui, uma vez a cada 6 h, e só se o perfil não for privado.
           lerInventario: !alvo && perfil.estado !== "privado",
         }),
+        carregarPanorama(),
       ])
-    : [[], null];
+    : [[], null, null];
   // O inventário é público na Steam por escolha da pessoa. Sem preço: a
   // vitrine é o item, como no perfil da Steam.
   const inventarioDeConta = alvo ? await listarInventario(alvo.id) : null;
@@ -118,20 +132,30 @@ export default async function PerfilPublicoPage({
     { k: 0, d: 0, hs: 0, v: 0 },
   );
   const doVitalicio = (rotulo: string) => perfil.estado === "ok" ? perfil.resumo.find((r) => r.rotulo === rotulo)?.valor ?? null : null;
-  const regua: { rotulo: string; valor: string; fonte: string }[] = [
+  const premier: Recorte = { tipo: "partidas", rotulo: "Premier", detalhe: "O CS Rating do Premier, lido da demo mais recente." };
+  const biblioteca: Recorte = { tipo: "vitalicio", rotulo: "biblioteca Steam", detalhe: "Horas de CS2 na biblioteca da Steam." };
+  const regua: { rotulo: string; valor: string; recorte: Recorte }[] = [
     cs?.demo?.rating
-      ? { rotulo: "CS Rating", valor: cs.demo.rating.atual.toLocaleString("pt-BR"), fonte: "Premier" }
-      : { rotulo: "Horas", valor: horas === null ? "—" : horas.toLocaleString("pt-BR"), fonte: "biblioteca" },
+      ? { rotulo: "CS Rating", valor: cs.demo.rating.atual.toLocaleString("pt-BR"), recorte: premier }
+      : { rotulo: "Horas", valor: horas === null ? "—" : horas.toLocaleString("pt-BR"), recorte: biblioteca },
     partidas.length > 0 && soma.d > 0
-      ? { rotulo: "K/D", valor: (soma.k / soma.d).toFixed(2).replace(".", ","), fonte: `${partidas.length} partidas oficiais` }
-      : { rotulo: "K/D", valor: doVitalicio("K/D") ?? "—", fonte: "vitalício" },
+      ? { rotulo: "K/D", valor: (soma.k / soma.d).toFixed(2).replace(".", ","), recorte: recortePartidas(partidas.length) }
+      : { rotulo: "K/D", valor: doVitalicio("K/D") ?? "—", recorte: recorteVitalicio() },
     cs?.demo
-      ? { rotulo: "ADR", valor: cs.demo.adr.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), fonte: `${cs.demo.partidas} demos` }
-      : { rotulo: "Dano / round", valor: doVitalicio("Dano / round") ?? "—", fonte: "vitalício" },
+      ? { rotulo: "ADR", valor: cs.demo.adr.toLocaleString("pt-BR", { maximumFractionDigits: 1 }), recorte: recorteDemos(cs.demo.partidas) }
+      : { rotulo: "Dano / round", valor: doVitalicio("Dano / round") ?? "—", recorte: recorteVitalicio() },
     partidas.length > 0 && soma.k > 0
-      ? { rotulo: "Headshot", valor: `${Math.round((soma.hs / soma.k) * 100)}%`, fonte: `${partidas.length} partidas oficiais` }
-      : { rotulo: "Headshot", valor: doVitalicio("Headshot") ?? "—", fonte: "vitalício" },
+      ? { rotulo: "Headshot", valor: `${Math.round((soma.hs / soma.k) * 100)}%`, recorte: recortePartidas(partidas.length) }
+      : { rotulo: "Headshot", valor: doVitalicio("Headshot") ?? "—", recorte: recorteVitalicio() },
   ];
+  // O que dá para dizer só com o público: as partidas e a comunidade.
+  const leituras = panorama ? leiturasPublicas(partidas, panorama) : [];
+  const kdNasPartidas = soma.d > 0 ? soma.k / soma.d : null;
+  const hsNasPartidas = soma.k > 0 ? (soma.hs / soma.k) * 100 : null;
+  const recorteDaComunidade = panorama ? recorteComunidade(panorama.totais.jogadores, panorama.totais.partidas) : null;
+  const diasDePartida = porDiaDePartida(partidas);
+  const armasVisiveis = perfil.estado === "ok" ? perfil.armas.slice(0, 8) : [];
+  const killsDeArma = armasVisiveis.reduce((s, a) => s + a.kills, 0) || 1;
 
   return (
     <div className="min-h-dvh">
@@ -227,7 +251,7 @@ export default async function PerfilPublicoPage({
                 <div key={r.rotulo} className="rounded-2xl bg-surface p-4 ring-1 ring-line">
                   <p className="hud">{r.rotulo}</p>
                   <p className="num mt-1.5 text-2xl font-semibold">{r.valor}</p>
-                  <p className="mt-1 truncate text-[11px] text-ink-faint" title={r.fonte}>{r.fonte}</p>
+                  <RecorteChip recorte={r.recorte} className="mt-2" />
                 </div>
               ))}
             </section>
@@ -241,10 +265,54 @@ export default async function PerfilPublicoPage({
               </p>
             )}
 
+            {leituras.length > 0 && (
+              <section className="mt-9">
+                <h2 className="hud mb-3">Leituras</h2>
+                <LeiturasPublicasGrade leituras={leituras} />
+              </section>
+            )}
+
+            {panorama && recorteDaComunidade && partidas.length >= 5 && (
+              <section className="mt-9 grid gap-3 lg:grid-cols-2">
+                <Quadro titulo="K/D · onde cai na fila" recorte={recorteDaComunidade} rodape="cada barra, jogadores com K/D naquela faixa · todas as partidas oficiais deles">
+                  <Distribuicao valores={panorama.kd} voce={kdNasPartidas} formatar={(v) => formatarNumero(v, 2)} rotuloVoce={souEu ? "você" : jogador.personaname.slice(0, 14)} />
+                </Quadro>
+                <Quadro titulo="Headshot · onde cai na fila" recorte={recorteDaComunidade} rodape="% das kills com headshot">
+                  <Distribuicao valores={panorama.hs} voce={hsNasPartidas} formatar={(v) => `${formatarNumero(v)}%`} rotuloVoce={souEu ? "você" : jogador.personaname.slice(0, 14)} />
+                </Quadro>
+              </section>
+            )}
+
+            {partidas.length >= 2 && (
+              <section className="mt-9 space-y-3">
+                <PartidasPainel partidas={partidas} titulo="Partidas oficiais" />
+                <Quadro titulo="Quando joga · 12 meses" recorte={recortePartidas(partidas.length)}>
+                  <Calendario dias={diasDePartida} agora={new Date()} semanas={52} unidade="partidas" />
+                </Quadro>
+              </section>
+            )}
+
+            {armasVisiveis.length > 0 && (
+              <section className="mt-9">
+                <Quadro titulo="Armas · parcela das kills" recorte={recorteVitalicio()} rodape="barra = parcela das kills entre as 8 armas que mais mataram · à direita, a precisão (acertos ÷ tiros)">
+                  <Ranking
+                    linhas={armasVisiveis.map((a) => ({
+                      id: a.id,
+                      rotulo: a.arma,
+                      icone: <ArmaIcone arma={a.id} className="w-8 shrink-0 text-ink-muted" />,
+                      valor: (a.kills / killsDeArma) * 100,
+                      texto: `${formatarNumero((a.kills / killsDeArma) * 100)}%`,
+                      base: a.precisao === null ? undefined : `${formatarNumero(a.precisao, 1)}% prec.`,
+                    }))}
+                  />
+                </Quadro>
+              </section>
+            )}
+
             {partidas.length > 0 && (
               <section className="mt-9">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="hud">Partidas oficiais</h2>
+                  <h2 className="hud">Últimas partidas</h2>
                   <p className="text-[11px] text-ink-faint">placar dos dez, direto do Game Coordinator</p>
                 </div>
                 <div className="mt-3">
@@ -416,6 +484,20 @@ export default async function PerfilPublicoPage({
       </main>
     </div>
   );
+}
+
+/** Partidas por dia de calendário (Brasília), para o calendário do perfil. */
+function porDiaDePartida(partidas: { jogadaEm: Date; eu: { venceu: boolean | null } }[]): Map<string, DiaDoCalendario> {
+  const { tz } = getLocale();
+  const dias = new Map<string, { n: number; v: number }>();
+  for (const p of partidas) {
+    const k = p.jogadaEm.toLocaleDateString("en-CA", { timeZone: tz });
+    const d = dias.get(k) ?? { n: 0, v: 0 };
+    d.n++;
+    if (p.eu.venceu) d.v++;
+    dias.set(k, d);
+  }
+  return new Map([...dias].map(([k, d]) => [k, { valor: d.n, detalhe: `${d.v} ${d.v === 1 ? "vitória" : "vitórias"}` }]));
 }
 
 function Estado({ titulo, texto }: { titulo: string; texto: string }) {

@@ -539,6 +539,26 @@ do jogo fora do padrão descrito aqui.
 
 ---
 
+### 4.9 Páginas públicas — `/p/[steamId]`, `/comunidade`, landing
+
+O que é público por natureza — o placar dos dez de cada partida oficial — vira
+leitura e comparação, sem expor nada da curva (que continua do dono):
+
+- **Perfil público**: régua de quatro números com `RecorteChip`; **leituras
+  públicas** (`lib/leituras-publicas.ts`, puras e testadas: posição de K/D
+  e HS na fila, melhor e pior mapa, sequência, forma, melhor horário — cada
+  uma só com amostra mínima); **onde cai na fila** (`Distribuicao`: o
+  histograma da comunidade com o marcador da pessoa e a mediana); o painel de
+  partidas; o calendário de 12 meses; armas em `Ranking` (parcela das
+  kills, precisão ao lado).
+- **Comunidade**: "O CS2 que o FragIQ vê" (`components/panorama-comunidade.tsx`
+  sobre `lib/comunidade-dados.ts`): totais, mapas mais jogados (com %
+  de prorrogação), rounds ganhos por tipo de compra (das demos), distribuição
+  de K/D com "você", grade dia × hora e o ranking — **só contas do FragIQ com
+  perfil público**; o resto é agregado sem nome.
+- **Landing**: os números do topo são os do panorama, ao vivo, e saem do
+  servidor já com o valor final (o contador só anima o que está fora da tela).
+
 ## 5. O cartão do analista
 
 `analista.tsx` + `analise-texto.ts`. A divisão de trabalho com o hero é o
