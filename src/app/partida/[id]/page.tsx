@@ -103,7 +103,8 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
           />
         )}
 
-        <div className="mt-8 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
+        {/* Duas colunas só quando há o "você contra o lobby"; sem ele, o espelho ocupa a largura toda. */}
+        <div className={cn("mt-8 grid gap-3", meuSteamId && meuTime && "lg:grid-cols-[1.25fr_1fr]")}>
           <Quadro titulo="Os dois times, lado a lado" rodape={demo.status === "DONE" ? "placar do GC + rounds lidos da demo · cada linha na sua escala; a barra cheia vence a linha" : "placar do GC · cada linha na sua escala"}>
             <Espelho
               linhas={linhasDoEspelho(partida, demo.porJogador)}
