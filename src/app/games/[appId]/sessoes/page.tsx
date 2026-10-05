@@ -12,6 +12,8 @@ import { DeltaChip } from "@/components/delta-chip";
 import { MarcarModo } from "@/components/marcar-modo";
 import { Estado } from "@/components/estado";
 import { cn } from "@/lib/utils";
+import { Quadro } from "@/components/graficos/quadro";
+import { Pirulitos, type Pirulito } from "@/components/graficos/pirulitos";
 
 export const dynamic = "force-dynamic";
 
@@ -57,8 +59,44 @@ export default async function SessoesPage({ params, searchParams }: { params: Pr
     return { delta: (i?.dados.delta as Delta | null) ?? null, titulo: i?.linha };
   };
 
+  // As últimas 40 sessões, da mais antiga para a mais recente, cada uma
+  // contra o normal que o chip dela usa (o mesmo insight `kd.vs.normal`).
+  const pirulitos: Pirulito[] = sessoes
+    .slice(0, 40)
+    .reverse()
+    .flatMap((s) => {
+      if (s.kd === null) return [];
+      const i = s.snapshotId ? chips.get(s.snapshotId) : undefined;
+      const delta = (i?.dados.delta as Delta | null) ?? null;
+      return [
+        {
+          id: String(s.ate.getTime()),
+          quando: s.ate,
+          valor: s.kd,
+          referencia: i?.referencia ?? null,
+          valencia: delta?.estado === "ok" ? delta.valencia : null,
+          fraco: s.rounds < kd.amostra.minimo,
+          apagado: lente !== null && s.modoId !== lente,
+          titulo: [formatarQuando(s.ate), `K/D ${formatarStat(kd, s.kd)}`, i?.referencia != null ? `normal ${formatarStat(kd, i.referencia)}` : null, `${s.rounds} rounds`, s.modo, s.mapa].filter(Boolean).join(" · "),
+        },
+      ];
+    });
+
   return (
     <div className="space-y-3">
+      {pirulitos.length >= 3 && (
+        <Quadro
+          titulo="K/D de cada sessão contra o normal dela"
+          legenda={[
+            { rotulo: "acima do normal", cor: "var(--good)", forma: "ponto" },
+            { rotulo: "abaixo do normal", cor: "var(--bad)", forma: "ponto" },
+            { rotulo: "normal da sessão", cor: "var(--ink-muted)", forma: "linha" },
+          ]}
+          rodape={`${pirulitos.length} ${pirulitos.length === 1 ? "sessão" : "sessões"} mais recentes · bola vazada = menos de ${kd.amostra.minimo} rounds${lente ? ` · fora de ${rotuloDoModo(modo)} apagadas` : ""}`}
+        >
+          <Pirulitos itens={pirulitos} formatar={(v) => formatarStat(kd, v)} />
+        </Quadro>
+      )}
       {lente && (
         <p className="num text-xs text-ink-faint">
           {doModo} de {sessoes.length} {sessoes.length === 1 ? "sessão" : "sessões"} em {rotuloDoModo(modo)}

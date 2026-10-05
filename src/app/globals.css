@@ -413,3 +413,23 @@ svg .barra:hover rect:not([fill="transparent"]) {
 .area-surgir {
   animation: surgir 0.9s ease 0.3s both;
 }
+
+/* Pirulitos: a sessão sob o cursor fica; as outras apagam. A haste cresce
+   a partir do normal ao entrar. */
+svg:has(.pirulito:hover) .pirulito:not(:hover) {
+  opacity: 0.35;
+}
+@keyframes haste {
+  from { stroke-dasharray: 0 400; }
+  to { stroke-dasharray: 400 0; }
+}
+.pirulito .haste {
+  animation: haste 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 15ms);
+}
+
+/* Espelho: a barra da esquerda cresce do centro para a esquerda. */
+.espelho-esq {
+  transform-origin: right;
+  animation: encher 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}

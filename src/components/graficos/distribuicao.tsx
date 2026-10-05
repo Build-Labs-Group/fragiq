@@ -92,7 +92,7 @@ export function Distribuicao({
           <circle cx={xVoce} cy={M.top - 2} r="3.5" fill="var(--accent)" />
           <text x={xVoce + (ancora === "start" ? -3 : ancora === "end" ? 3 : 0)} y={M.top - 10} textAnchor={ancora} fontSize="10.5" fontWeight="600" fill="var(--ink)" fontFamily="var(--font-geist-mono)">
             {rotuloVoce} {formatar(voce)}
-            {pctVoce !== null ? ` · top ${Math.max(1, Math.round(100 - pctVoce))}%` : ""}
+            {pctVoce !== null ? (pctVoce >= 50 ? ` · top ${Math.max(1, Math.round(100 - pctVoce))}%` : ` · melhor que ${Math.round(pctVoce)}%`) : ""}
           </text>
         </g>
       )}

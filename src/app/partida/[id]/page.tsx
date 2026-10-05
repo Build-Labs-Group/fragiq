@@ -13,6 +13,10 @@ import { SteamMark } from "@/components/steam-mark";
 import { Selo } from "@/components/selo";
 import { RoundsDaPartida } from "@/components/rounds-da-partida";
 import { cn } from "@/lib/utils";
+import { Quadro } from "@/components/graficos/quadro";
+import { Espelho, type LinhaDeEspelho } from "@/components/graficos/espelho";
+import { Regua } from "@/components/graficos/regua";
+import { formatarNumero } from "@/lib/formato";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +103,18 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
           />
         )}
 
-        <div className="mt-8 grid gap-6">
+        <div className="mt-8 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
+          <Quadro titulo="Os dois times, lado a lado" rodape={demo.status === "DONE" ? "placar do GC + rounds lidos da demo · cada linha na sua escala; a barra cheia vence a linha" : "placar do GC · cada linha na sua escala"}>
+            <Espelho
+              linhas={linhasDoEspelho(partida, demo.porJogador)}
+              rotulos={["Time A", "Time B"]}
+              cores={coresDosTimes(partida, meuTime ? partida.times.indexOf(meuTime) : null)}
+            />
+          </Quadro>
+          {meuSteamId && meuTime && <ContraOLobby partida={partida} meuSteamId={meuSteamId} metricas={demo.porJogador} />}
+        </div>
+
+        <div className="mt-6 grid gap-6">
           {partida.times.map((t, i) => (
             <Time
               key={t.time}
@@ -164,6 +179,96 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
         )}
       </main>
     </div>
+  );
+}
+
+/** Meu time (ou o vencedor, para quem não jogou) na cor da marca; o outro, neutro. */
+function coresDosTimes(partida: Scoreboard, meu: number | null): [string, string] {
+  const destaque = meu ?? partida.times.findIndex((t) => t.venceu === true);
+  return [destaque === 0 ? "var(--accent)" : "var(--ink-muted)", destaque === 1 ? "var(--accent)" : "var(--ink-muted)"];
+}
+
+function linhasDoEspelho(partida: Scoreboard, metricas: MetricasDaPartida): LinhaDeEspelho[] {
+  const inteiro = (v: number) => formatarNumero(v);
+  const pct = (v: number) => `${formatarNumero(v)}%`;
+  const soma = (t: Scoreboard["times"][number], f: (j: Scoreboard["times"][number]["jogadores"][number]) => number) => t.jogadores.reduce((s, j) => s + f(j), 0);
+  const [a, b] = partida.times;
+  const hs = (t: typeof a) => {
+    const k = soma(t, (j) => j.kills);
+    return k ? (soma(t, (j) => j.hs) / k) * 100 : 0;
+  };
+  const linhas: LinhaDeEspelho[] = [
+    { rotulo: "kills", a: soma(a, (j) => j.kills), b: soma(b, (j) => j.kills), formatar: inteiro },
+    { rotulo: "headshot", a: hs(a), b: hs(b), formatar: pct },
+    { rotulo: "MVPs", a: soma(a, (j) => j.mvps), b: soma(b, (j) => j.mvps), formatar: inteiro },
+  ];
+  const daDemo = (t: typeof a) => t.jogadores.map((j) => metricas.get(j.steamId)).filter((m) => m !== undefined);
+  const da = daDemo(a);
+  const db = daDemo(b);
+  if (da.length > 0 && db.length > 0) {
+    const media = (ms: typeof da, f: (m: (typeof da)[number]) => number) => ms.reduce((s, m) => s + f(m), 0) / ms.length;
+    const total = (ms: typeof da, f: (m: (typeof da)[number]) => number) => ms.reduce((s, m) => s + f(m), 0);
+    linhas.push(
+      { rotulo: "ADR médio", a: media(da, (m) => m.adr), b: media(db, (m) => m.adr), formatar: inteiro },
+      { rotulo: "KAST médio", a: media(da, (m) => m.kast * 100), b: media(db, (m) => m.kast * 100), formatar: pct },
+      { rotulo: "aberturas", a: total(da, (m) => m.aberturas), b: total(db, (m) => m.aberturas), formatar: inteiro },
+      { rotulo: "trocas", a: total(da, (m) => m.trocas), b: total(db, (m) => m.trocas), formatar: inteiro },
+      { rotulo: "clutches", a: total(da, (m) => m.clutchesGanhos), b: total(db, (m) => m.clutchesGanhos), formatar: inteiro },
+      { rotulo: "granadas", a: total(da, (m) => m.danoUtil), b: total(db, (m) => m.danoUtil), formatar: inteiro },
+    );
+  }
+  return linhas;
+}
+
+/**
+ * A pessoa contra a média dos outros nove da mesma partida: o "como eu fui
+ * nesse lobby" que o placar não diz sem conta de cabeça. Régua = você,
+ * traço = média do lobby.
+ */
+function ContraOLobby({ partida, meuSteamId, metricas }: { partida: Scoreboard; meuSteamId: string; metricas: MetricasDaPartida }) {
+  const todos = partida.times.flatMap((t) => t.jogadores);
+  const eu = todos.find((j) => j.steamId === meuSteamId);
+  if (!eu) return null;
+  const outros = todos.filter((j) => j.steamId !== meuSteamId);
+  const media = (f: (j: (typeof todos)[number]) => number | null) => {
+    const vs = outros.map(f).filter((v): v is number => v !== null);
+    return vs.length ? vs.reduce((s, v) => s + v, 0) / vs.length : null;
+  };
+  const kd = (j: (typeof todos)[number]) => (j.deaths ? j.kills / j.deaths : j.kills);
+  const hs = (j: (typeof todos)[number]) => (j.kills ? (j.hs / j.kills) * 100 : null);
+  const adr = (j: (typeof todos)[number]) => metricas.get(j.steamId)?.adr ?? null;
+  const kast = (j: (typeof todos)[number]) => {
+    const m = metricas.get(j.steamId);
+    return m ? m.kast * 100 : null;
+  };
+  const linhas = [
+    { rotulo: "K/D", eu: kd(eu), lobby: media(kd), formatar: (v: number) => formatarNumero(v, 2), pct: false },
+    { rotulo: "ADR", eu: adr(eu), lobby: media(adr), formatar: (v: number) => formatarNumero(v), pct: false },
+    { rotulo: "KAST", eu: kast(eu), lobby: media(kast), formatar: (v: number) => `${formatarNumero(v)}%`, pct: true },
+    { rotulo: "headshot", eu: hs(eu), lobby: media(hs), formatar: (v: number) => `${formatarNumero(v)}%`, pct: true },
+  ].filter((l) => l.eu !== null && l.lobby !== null) as { rotulo: string; eu: number; lobby: number; formatar: (v: number) => string; pct: boolean }[];
+  if (linhas.length === 0) return null;
+
+  return (
+    <Quadro titulo="Você contra o lobby" rodape="régua = você · traço = média dos outros nove desta partida">
+      <ul className="grid grid-cols-2 gap-x-5 gap-y-4">
+        {linhas.map((l) => {
+          const dif = l.lobby ? ((l.eu - l.lobby) / l.lobby) * 100 : 0;
+          const igual = Math.abs(dif) < 3;
+          return (
+            <li key={l.rotulo}>
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="hud">{l.rotulo}</p>
+                <p className={cn("num text-xs", igual ? "text-ink-faint" : dif > 0 ? "text-good" : "text-bad")}>{igual ? "≈" : `${dif > 0 ? "▲" : "▼"} ${formatarNumero(Math.abs(dif))}%`}</p>
+              </div>
+              <p className="num mt-1 text-2xl font-semibold">{l.formatar(l.eu)}</p>
+              <Regua className="mt-2" valor={l.eu} referencia={l.lobby} valencia={igual ? "neutral" : dif > 0 ? "good" : "bad"} emPct={l.pct} />
+              <p className="num mt-1.5 text-[11px] text-ink-faint">lobby {l.formatar(l.lobby)}</p>
+            </li>
+          );
+        })}
+      </ul>
+    </Quadro>
   );
 }
 

@@ -101,7 +101,7 @@ export function SessaoHero({
                   valencia={delta.estado === "ok" ? delta.valencia : null}
                   emPct={n.stat.unit === "%"}
                 />
-                <p className="num mt-2 truncate text-xs text-ink-faint" title={referencia(n.normal, n.stat)}>
+                <p className="num mt-2 text-xs text-ink-faint sm:truncate" title={referencia(n.normal, n.stat)}>
                   <span className="mr-1 inline-block h-2.5 w-0.5 translate-y-px rounded-full bg-ink align-baseline" aria-hidden />
                   {referencia(n.normal, n.stat)}
                 </p>

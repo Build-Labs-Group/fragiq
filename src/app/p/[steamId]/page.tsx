@@ -30,7 +30,7 @@ import { RecorteChip } from "@/components/graficos/recorte";
 import { Distribuicao } from "@/components/graficos/distribuicao";
 import { Calendario, type DiaDoCalendario } from "@/components/graficos/calendario";
 import { Ranking } from "@/components/graficos/ranking";
-import { carregarPanorama } from "@/lib/comunidade-dados";
+import { carregarPanorama, NOTA_DISTRIBUICAO } from "@/lib/comunidade-dados";
 import { leiturasPublicas } from "@/lib/leituras-publicas";
 import { recorteComunidade, recorteDemos, recortePartidas, recorteVitalicio, type Recorte } from "@/lib/recortes";
 import { formatarNumero, getLocale } from "@/lib/formato";
@@ -152,7 +152,8 @@ export default async function PerfilPublicoPage({
   const leituras = panorama ? leiturasPublicas(partidas, panorama) : [];
   const kdNasPartidas = soma.d > 0 ? soma.k / soma.d : null;
   const hsNasPartidas = soma.k > 0 ? (soma.hs / soma.k) * 100 : null;
-  const recorteDaComunidade = panorama ? recorteComunidade(panorama.totais.jogadores, panorama.totais.partidas) : null;
+  const recorteDaComunidade = panorama ? recorteComunidade(panorama.kd.length, panorama.totais.partidas, NOTA_DISTRIBUICAO) : null;
+  const recorteDoHs = panorama ? recorteComunidade(panorama.hs.length, panorama.totais.partidas, NOTA_DISTRIBUICAO) : null;
   const diasDePartida = porDiaDePartida(partidas);
   const armasVisiveis = perfil.estado === "ok" ? perfil.armas.slice(0, 8) : [];
   const killsDeArma = armasVisiveis.reduce((s, a) => s + a.kills, 0) || 1;
@@ -277,7 +278,7 @@ export default async function PerfilPublicoPage({
                 <Quadro titulo="K/D · onde cai na fila" recorte={recorteDaComunidade} rodape="cada barra, jogadores com K/D naquela faixa · todas as partidas oficiais deles">
                   <Distribuicao valores={panorama.kd} voce={kdNasPartidas} formatar={(v) => formatarNumero(v, 2)} rotuloVoce={souEu ? "você" : jogador.personaname.slice(0, 14)} />
                 </Quadro>
-                <Quadro titulo="Headshot · onde cai na fila" recorte={recorteDaComunidade} rodape="% das kills com headshot">
+                <Quadro titulo="Headshot · onde cai na fila" recorte={recorteDoHs} rodape="% das kills com headshot">
                   <Distribuicao valores={panorama.hs} voce={hsNasPartidas} formatar={(v) => `${formatarNumero(v)}%`} rotuloVoce={souEu ? "você" : jogador.personaname.slice(0, 14)} />
                 </Quadro>
               </section>
@@ -336,7 +337,7 @@ export default async function PerfilPublicoPage({
                     <li key={s.ate.getTime()} className="num flex flex-wrap items-center gap-x-6 gap-y-1 px-5 py-3 text-sm">
                       <span className="text-ink-muted" suppressHydrationWarning>{formatarQuando(s.ate)}</span>
                       <span>{s.rounds} rounds</span>
-                      <span className={cn(s.kd !== null && s.kd >= 1 && "text-accent")}>K/D {s.kd === null ? "—" : s.kd.toFixed(2).replace(".", ",")}</span>
+                      <span className={cn(s.kd !== null && s.kd >= 1 && "text-good")}>K/D {s.kd === null ? "—" : s.kd.toFixed(2).replace(".", ",")}</span>
                       <span>{s.danoPorRound === null ? "—" : Math.round(s.danoPorRound)} dano/round</span>
                       <span>{s.hs === null ? "—" : `${s.hs.toFixed(1).replace(".", ",")}%`} HS</span>
                       {(s.mapa || s.modo) && <span className="font-sans text-ink-faint">{[s.modo, s.mapa].filter(Boolean).join(" · ")}</span>}

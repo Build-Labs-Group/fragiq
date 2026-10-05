@@ -27,18 +27,27 @@ export type InsightLinha = {
   referencia: number | null;
 };
 
+/**
+ * O tom vai num filete à esquerda, não no texto inteiro. Com a linha toda
+ * colorida, "K/D caindo 4%" em vermelho ao lado de "forma +85%" em verde
+ * gritava duas coisas opostas com o mesmo volume; o filete diz a direção e
+ * o texto fica legível e neutro, com o número em destaque pela tinta.
+ */
 const TOM: Record<InsightLinha["tom"], string> = {
-  BOM: "text-good",
-  RUIM: "text-bad",
-  NEUTRO: "text-ink",
-  AVISO: "text-ink-muted",
+  BOM: "bg-good",
+  RUIM: "bg-bad",
+  NEUTRO: "bg-ink-faint/50",
+  AVISO: "bg-warn",
 };
+const TOM_NOME: Record<InsightLinha["tom"], string> = { BOM: "bom", RUIM: "ruim", NEUTRO: "neutro", AVISO: "aviso" };
 
 export function Insight({ insight: i, className }: { insight: InsightLinha; className?: string }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-xl bg-surface px-3 py-2 ring-1 ring-line", className)}>
+    <div className={cn("relative flex items-center gap-3 overflow-hidden rounded-xl bg-surface py-2 pr-3 pl-4 ring-1 ring-line", className)}>
+      <span className={cn("absolute inset-y-1.5 left-1.5 w-1 rounded-full", TOM[i.tom])} aria-hidden />
       <Visual insight={i} />
-      <p className={cn("min-w-0 flex-1 truncate text-sm", TOM[i.tom])} title={`${i.linha}${base(i)}`}>
+      <p className={cn("min-w-0 flex-1 truncate text-sm", i.tom === "AVISO" ? "text-ink-muted" : "text-ink")} title={`${i.linha}${base(i)}`}>
+        <span className="sr-only">{TOM_NOME[i.tom]}: </span>
         {i.linha}
       </p>
       {i.confianca && (

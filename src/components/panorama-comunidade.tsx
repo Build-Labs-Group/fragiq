@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { Panorama } from "@/lib/comunidade-dados";
-import { MIN_PARTIDAS_RANKING } from "@/lib/comunidade-dados";
+import { MIN_PARTIDAS_RANKING, NOTA_DISTRIBUICAO } from "@/lib/comunidade-dados";
 import { formatarDia, formatarNumero } from "@/lib/formato";
 import { rotularMapa } from "@/lib/cs2-labels";
 import { identidadeDoMapa } from "@/lib/mapas";
@@ -92,7 +92,7 @@ export function PanoramaComunidade({ panorama, voce }: { panorama: Panorama; voc
           )}
         </Quadro>
 
-        <Quadro titulo="K/D na fila" recorte={recorte} rodape="cada barra, jogadores com K/D naquela faixa (todas as partidas oficiais de cada um)">
+        <Quadro titulo="K/D na fila" recorte={recorteComunidade(panorama.kd.length, totais.partidas, NOTA_DISTRIBUICAO)} rodape="cada barra, jogadores com K/D naquela faixa (todas as partidas oficiais de cada um)">
           <Distribuicao valores={panorama.kd} voce={voce?.kd ?? null} formatar={(v) => formatarNumero(v, 2)} rotuloVoce="você" />
         </Quadro>
 

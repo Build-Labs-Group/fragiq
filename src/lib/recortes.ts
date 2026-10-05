@@ -78,10 +78,14 @@ export function recortePeriodo(dias: number, desde?: Date): Recorte {
   };
 }
 
-export function recorteComunidade(jogadores: number, partidas?: number): Recorte {
+/**
+ * `nota` diz o corte quando o gráfico não usa todo mundo (uma distribuição
+ * só conta quem tem amostra): o chip mostra sempre o N que o desenho usa.
+ */
+export function recorteComunidade(jogadores: number, partidas?: number, nota?: string): Recorte {
   return {
     tipo: "comunidade",
     rotulo: plural(jogadores, "jogador", "jogadores"),
-    detalhe: `Todos os jogadores com partida gravada no FragIQ${partidas ? `, em ${plural(partidas, "partida", "partidas")}` : ""}. Agregado, sem identificar ninguém.`,
+    detalhe: `${nota ?? "Todos os jogadores com partida gravada no FragIQ"}${partidas ? `, em ${plural(partidas, "partida", "partidas")}` : ""}. Agregado, sem identificar ninguém.`,
   };
 }
