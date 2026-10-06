@@ -2,77 +2,56 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
-import type { LinhaMetrica } from "@/lib/leituras";
-import { Sparkline } from "./sparkline";
+import { Search } from "lucide-react";
 import { DeltaChip } from "./delta-chip";
-import { GROUP_ORDER, pontosSimples } from "@/lib/series";
+import { GROUP_ORDER } from "@/lib/series";
 import { formatarNumeroAte } from "@/lib/formato";
-import type { Delta } from "@/lib/delta";
+import type { MetricaDaTela } from "@/lib/metricas-tela";
 import { cn } from "@/lib/utils";
 
 /**
- * Todas as métricas, já comparadas.
+ * Todas as métricas que não são destaque, para quem quer procurar.
  *
- * Cobertura total sem consulta para montar: cada contador aparece como taxa
- * por round no período contra a taxa de vitalício, que é a única comparação
- * honesta entre um recorte e uma vida inteira. A ordem é por distância do
- * normal, então o topo já é a resposta para "o que mudou". Chips de grupo
- * recortam a lista; o grupo "Última partida" (contadores que a Valve
- * congelou) fica colapsado por padrão.
+ * Ladrilhos de tamanho fixo numa grade com rolagem própria: a página não
+ * vira uma lista de 180 linhas, e cada ladrilho diz só o nome, o número e
+ * o chip (o detalhe está a um toque, em `metricas/[key]`). A ordem é a de
+ * `todasAsMetricas` — moveu e pesou, moveu pouco, não moveu —, e os que não
+ * se moveram na sessão vão apagados. Chips de grupo e busca recortam a
+ * grade; os contadores de "última partida" ficam fora, num `details`.
  */
 
 function fmt(v: number | null, casas = 2) {
   if (v === null) return "—";
-  // Taxas por round de contador raro ficam na terceira casa. Arredondar para
-  // duas mostra "0" ao lado de uma variação de +400%, o que parece defeito.
-  const precisao = v !== 0 && Math.abs(v) < 0.1 ? 4 : casas;
-  return formatarNumeroAte(v, precisao);
+  return formatarNumeroAte(v, v !== 0 && Math.abs(v) < 0.1 ? 4 : casas);
 }
 
-const GRUPO_CONGELADO = "Última partida";
-
-function deltaDe(l: LinhaMetrica): Delta {
-  if (l.variacao === null) return { estado: "sem-base", motivo: "sem-normal" };
-  const pct = l.variacao * 100;
-  const direcao = Math.abs(pct) < 3 ? "igual" : pct > 0 ? "sobe" : "desce";
-  return {
-    estado: "ok",
-    valor: pct,
-    unidade: "%",
-    direcao,
-    valencia: "neutral",
-    fraco: !l.relevante || l.referencia === "vitalicio-fraco",
-  };
-}
-
-/** A coluna diz o que o número é: o normal do modo, ou o vitalício quando o modo ainda não tem base. */
-function rotuloDaReferencia(l: LinhaMetrica): string {
-  if (l.referencia === "modo") return "normal do modo";
-  if (l.referencia === "vitalicio-fraco") return "vitalício · sem base";
-  return "vitalício";
-}
-
-export function MetricTable({ linhas, appId, congeladas = false }: { linhas: LinhaMetrica[]; appId: number; congeladas?: boolean }) {
+export function MetricTable({
+  metricas,
+  congeladas,
+  congeladasPelaValve,
+  appId,
+}: {
+  metricas: MetricaDaTela[];
+  congeladas: MetricaDaTela[];
+  /** Os contadores de última partida pararam de andar (a Valve congelou). */
+  congeladasPelaValve: boolean;
+  appId: number;
+}) {
   const [busca, setBusca] = useState("");
   const [grupo, setGrupo] = useState<string | null>(null);
-  const [mostrarCongeladas, setMostrarCongeladas] = useState(false);
 
-  const grupos = useMemo(() => GROUP_ORDER.filter((g) => linhas.some((l) => l.grupo === g)), [linhas]);
+  const grupos = useMemo(() => GROUP_ORDER.filter((g) => metricas.some((m) => m.grupo === g)), [metricas]);
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return linhas.filter(
-      (l) =>
-        (!q || l.label.toLowerCase().includes(q) || l.key.toLowerCase().includes(q)) &&
-        (grupo === null || l.grupo === grupo) &&
-        (mostrarCongeladas || grupo === GRUPO_CONGELADO || !congeladas || l.grupo !== GRUPO_CONGELADO),
+    return metricas.filter(
+      (m) => (!q || m.rotulo.toLowerCase().includes(q) || m.key.toLowerCase().includes(q)) && (grupo === null || m.grupo === grupo),
     );
-  }, [busca, grupo, linhas, congeladas, mostrarCongeladas]);
-  const escondidas = congeladas && !mostrarCongeladas && grupo === null ? linhas.filter((l) => l.grupo === GRUPO_CONGELADO).length : 0;
+  }, [busca, grupo, metricas]);
+  const paradas = filtradas.filter((m) => !m.aconteceu).length;
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {[null, ...grupos].map((g) => (
           <button
             key={g ?? "todas"}
@@ -86,82 +65,68 @@ export function MetricTable({ linhas, appId, congeladas = false }: { linhas: Lin
             {g ?? "Todas"}
           </button>
         ))}
+        <label className="relative ml-auto flex w-full items-center sm:w-64">
+          <Search className="pointer-events-none absolute left-3 size-4 text-ink-faint" aria-hidden />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder={`Buscar entre ${metricas.length}`}
+            aria-label="Buscar métrica"
+            className="min-h-10 w-full rounded-xl bg-surface pr-3 pl-9 text-sm text-ink ring-1 ring-line placeholder:text-ink-faint focus:ring-accent/50 focus:outline-none"
+          />
+        </label>
       </div>
-      <label className="relative flex items-center">
-        <Search className="pointer-events-none absolute left-3 size-4 text-ink-faint" />
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder={`Buscar entre ${linhas.length} métricas`}
-          className="min-h-11 w-full rounded-xl bg-surface pr-3 pl-9 text-sm text-ink ring-1 ring-line placeholder:text-ink-faint focus:ring-accent/50 focus:outline-none"
-        />
-      </label>
 
-      <div className="mt-3 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
-        {filtradas.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-ink-faint">
-            Nenhuma métrica com esse nome.
-          </p>
-        ) : (
-          filtradas.map((l) => <Linha key={l.key} l={l} appId={appId} />)
-        )}
-        {escondidas > 0 && (
-          <button
-            type="button"
-            onClick={() => setMostrarCongeladas(true)}
-            className="w-full px-4 py-3 text-left text-xs text-ink-faint transition hover:text-ink"
-          >
-            ▸ {escondidas} contadores de última partida congelados pela Valve
-          </button>
-        )}
-      </div>
+      {filtradas.length === 0 ? (
+        <p className="rounded-2xl bg-surface px-4 py-8 text-center text-sm text-ink-faint ring-1 ring-line">Nenhuma métrica com esse nome.</p>
+      ) : (
+        <div className="max-h-[26rem] overflow-y-auto rounded-2xl bg-surface p-2 ring-1 ring-line">
+          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4">
+            {filtradas.map((m) => (
+              <Ladrilho key={m.key} m={m} appId={appId} />
+            ))}
+          </ul>
+        </div>
+      )}
+      <p className="tnum mt-2 text-[11px] text-ink-faint">
+        {filtradas.length} {filtradas.length === 1 ? "métrica" : "métricas"}
+        {paradas > 0 && ` · ${paradas} sem movimento na sessão, apagadas no fim`} · valores por round
+      </p>
+
+      {congeladas.length > 0 && (
+        <details className="mt-4 rounded-2xl bg-surface ring-1 ring-line">
+          <summary className="cursor-pointer px-4 py-3 text-xs text-ink-faint transition hover:text-ink">
+            {congeladas.length} contadores de última partida{congeladasPelaValve ? " · congelados pela Valve" : ""}
+          </summary>
+          <ul className="grid grid-cols-2 gap-1.5 p-2 pt-0 sm:grid-cols-3 lg:grid-cols-4">
+            {congeladas.map((m) => (
+              <Ladrilho key={m.key} m={m} appId={appId} bruto />
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
 
-function Linha({ l, appId }: { l: LinhaMetrica; appId: number }) {
-
+/** Um ladrilho de altura fixa: nome numa linha, número e chip na outra. */
+function Ladrilho({ m, appId, bruto = false }: { m: MetricaDaTela; appId: number; bruto?: boolean }) {
   return (
-    <Link
-      href={`/games/${appId}/metricas/${encodeURIComponent(l.key)}`}
-      className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-4 py-2.5 transition last:border-b-0 hover:bg-surface-2"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">{l.label}</p>
-        <p className="text-[11px] text-ink-faint">
-          {l.grupo}
-          {l.total !== null && (
-            <>
-              {" · "}
-              <span className="tnum">{fmt(l.total, 0)}</span> no período
-            </>
-          )}
-        </p>
-      </div>
-
-      <div className="tnum flex items-center gap-4 text-sm">
-        <div className="min-w-16 text-right">
-          <p className="font-medium">{fmt(l.periodo)}</p>
-          <p className="text-[10px] text-ink-faint">
-            {l.porRound ? "por round" : "no período"}
-          </p>
-        </div>
-
-        <div className="min-w-16 text-right">
-          <p className="text-ink-muted">{fmt(l.vitalicio)}</p>
-          <p className="text-[10px] text-ink-faint">{rotuloDaReferencia(l)}</p>
-        </div>
-
-        <div className="min-w-14 text-right">
-          {l.variacao === null ? <p className="text-ink-faint">—</p> : <DeltaChip delta={deltaDe(l)} />}
-        </div>
-      </div>
-
-      <div className="hidden h-7 w-24 sm:block">
-        {l.valores.length >= 2 && <Sparkline pontos={pontosSimples(l.valores)} normal={l.vitalicio} className="h-7 w-full" />}
-      </div>
-
-      <ChevronRight className="size-4 shrink-0 text-ink-faint" aria-hidden />
-    </Link>
+    <li>
+      <Link
+        href={`/games/${appId}/metricas/${encodeURIComponent(m.key)}`}
+        title={`${m.rotulo} · ${m.grupo}`}
+        className={cn(
+          "flex h-16 flex-col justify-between rounded-xl bg-surface-2/50 px-3 py-2 transition hover:bg-surface-2 hover:ring-1 hover:ring-accent/30",
+          !bruto && !m.aconteceu && "opacity-45",
+        )}
+      >
+        <span className="truncate text-xs text-ink-muted">{m.rotulo}</span>
+        <span className="num flex items-center gap-2 text-sm font-medium">
+          {fmt(m.periodo, bruto ? 0 : 2)}
+          {!bruto && <DeltaChip delta={m.delta} className="ml-auto" />}
+        </span>
+      </Link>
+    </li>
   );
 }
