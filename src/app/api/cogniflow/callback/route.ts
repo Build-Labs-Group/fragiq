@@ -82,12 +82,17 @@ export async function POST(request: NextRequest) {
     where: { userId: conversa.userId, gameAppId: conversa.appId },
     orderBy: { createdAt: "desc" },
     take: PERGUNTAS_CONSIDERADAS,
-    select: { id: true, status: true },
+    select: { id: true, status: true, historico: true },
   });
   const dona = donaDaResposta(
     { id: evento.id, replyToMessageId: evento.reply_to_message_id },
     evento.conversation_id,
-    perguntas.map((p) => ({ id: p.id, aberta: p.status === "PENDING" || p.status === "ACKNOWLEDGED" })),
+    perguntas.map((p) => ({
+      id: p.id,
+      aberta: p.status === "PENDING" || p.status === "ACKNOWLEDGED",
+      // Cada entrada do histórico é uma vez que a pergunta saiu de novo (`pedirDeNovo`).
+      repedidos: Array.isArray(p.historico) ? p.historico.length : 0,
+    })),
     conexaoDoCogniflow(),
   );
 
@@ -134,8 +139,12 @@ export async function POST(request: NextRequest) {
   }
 
   // A análise de sessão também vai para o chat da Steam, pelo bot. Falha
-  // aqui não pode derrubar o callback — a resposta já está gravada.
-  await enfileirarAnaliseNoSteam(dona.perguntaId).catch((e) => reportarErro("cogniflow.mensagemSteam", e));
+  // aqui não pode derrubar o callback — a resposta já está gravada. Uma
+  // pergunta que saiu de novo (análise refeita) não manda outra mensagem:
+  // o jogador já recebeu a da sessão quando ela fechou.
+  if (!Array.isArray(alvo.historico) || alvo.historico.length === 0) {
+    await enfileirarAnaliseNoSteam(dona.perguntaId).catch((e) => reportarErro("cogniflow.mensagemSteam", e));
+  }
 
   return NextResponse.json({ ok: true });
 }

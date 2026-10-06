@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { AnaliseDTO } from "@/lib/analises";
-import { lerAnalise, lerAnaliseEstruturada, type Achado } from "@/lib/analise-texto";
-import { formatarNumero, formatarQuando } from "@/lib/formato";
-import { calcularDelta } from "@/lib/delta";
+import type { AnaliseDTO, NumeroDaSessao } from "@/lib/analises";
+import type { AchadoDaTela, LeituraLimpa } from "@/lib/achados";
+import type { AnaliseLida } from "@/lib/analise-texto";
+import type { EstadoDaAnalise } from "@/lib/analise-sessao";
+import { formatarQuando } from "@/lib/formato";
 import { DeltaChip } from "@/components/delta-chip";
+import { Regua } from "@/components/graficos/regua";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,11 +19,17 @@ import { cn } from "@/lib/utils";
  * sync, no cron, no bot, e quando o scoreboard da partida chega do GC.
  * Não há caixa de pergunta: as análises são disparadas por nós.
  *
- * O cartão é desenhado, não lido (docs/dados-confiaveis.md §4): contexto
- * numa linha, a manchete numa linha, os três números da sessão contra a
- * referência como tiles com chip, os achados do agente como barras valor ×
- * referência, e causa e ação numa linha cada. Análises antigas em prosa
- * ficam colapsadas numa linha, com "ler" para quem quiser o texto.
+ * O cartão é desenhado, não lido (docs/dados-confiaveis.md §4), e todo
+ * número nele é nosso: os três da sessão vêm dos insights materializados
+ * (os mesmos da tabela de Sessões), e os achados do modelo chegam
+ * recalculados da sessão, com a direção da tabela do código
+ * (`lib/achados.ts`, `lib/direcao.ts`). Do modelo ficam a escolha do que
+ * destacar, a manchete, a causa e a ação, já limpas.
+ *
+ * O texto só aparece quando o servidor diz `estado: "ok"`: análise de uma
+ * sessão que mudou, com números de outra sessão ou ilegível não vai para a
+ * tela — o cartão diz por quê e a análise é pedida de novo (sozinha, para a
+ * mais recente; por botão, para as outras). JSON nunca chega aqui.
  *
  * A resposta vem por callback, então a lista é consultada enquanto há algo
  * em aberto e para quando não há.
@@ -47,10 +55,11 @@ export function Analista({
 }) {
   const [analises, setAnalises] = useState<AnaliseDTO[]>(iniciais);
   const pediuSessao = useRef(false);
+  const refeitaSozinha = useRef<string | null>(null);
 
   useEffect(() => setAnalises(iniciais), [iniciais]);
 
-  const emAberto = analises.some((a) => a.status === "PENDING" || a.status === "ACKNOWLEDGED");
+  const emAberto = analises.some((a) => a.estado === "pendente");
 
   const recarregar = useCallback(async () => {
     const query = new URLSearchParams({ appId: String(appId) });
@@ -61,14 +70,17 @@ export function Analista({
     setAnalises(data.analyses);
   }, [appId, modo]);
 
-  const pedir = useCallback(async () => {
-    await fetch("/api/analises", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appId }),
-    }).catch(() => {});
-    await recarregar();
-  }, [appId, recarregar]);
+  const pedir = useCallback(
+    async (analiseId?: string) => {
+      await fetch("/api/analises", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(analiseId ? { appId, analiseId } : { appId }),
+      }).catch(() => {});
+      await recarregar();
+    },
+    [appId, recarregar],
+  );
 
   useEffect(() => {
     if (!sessaoSemAnalise || pediuSessao.current) return;
@@ -76,20 +88,29 @@ export function Analista({
     void pedir();
   }, [sessaoSemAnalise, pedir]);
 
+  const sessoes = analises.filter((a) => a.kind === "SESSION");
+  const [ultima, ...anteriores] = sessoes;
+
+  // A mais recente que não pode ir para a tela é pedida de novo uma vez,
+  // sem clique: é a que a pessoa veio ver.
+  useEffect(() => {
+    if (!ultima?.podePedirDeNovo || refeitaSozinha.current === ultima.id) return;
+    refeitaSozinha.current = ultima.id;
+    void pedir(ultima.id);
+  }, [ultima, pedir]);
+
   useEffect(() => {
     if (!emAberto) return;
     const id = setInterval(recarregar, INTERVALO_MS);
     return () => clearInterval(id);
   }, [emAberto, recarregar]);
 
-  const sessoes = analises.filter((a) => a.kind === "SESSION");
-  const [ultima, ...anteriores] = sessoes;
   const aguardandoSessao = !ultima && sessaoSemAnalise;
 
   return (
     <div>
       {ultima ? (
-        <Cartao analise={ultima} colapsado={apresentacao === "resumo"} pedir={pedir} />
+        <Cartao analise={ultima} pedir={pedir} />
       ) : (
         <div className="rounded-2xl bg-surface p-5 ring-1 ring-line">
           {aguardandoSessao ? <Skeleton /> : <p className="text-sm text-ink-faint">Sem sessão para analisar ainda.</p>}
@@ -112,7 +133,7 @@ export function Analista({
             <ol className="space-y-3">
               {anteriores.map((a) => (
                 <li key={a.id}>
-                  <Cartao analise={a} colapsado pedir={pedir} />
+                  <Cartao analise={a} pedir={pedir} />
                 </li>
               ))}
             </ol>
@@ -125,7 +146,7 @@ export function Analista({
 
 /* --------------------------------- cartão -------------------------------- */
 
-function Cartao({ analise, colapsado, pedir }: { analise: AnaliseDTO; colapsado: boolean; pedir: () => Promise<void> }) {
+function Cartao({ analise, pedir }: { analise: AnaliseDTO; pedir: (analiseId?: string) => Promise<void> }) {
   const data = new Date(analise.sessaoEm ?? analise.createdAt);
   const s = analise.sessao;
 
@@ -147,8 +168,8 @@ function Cartao({ analise, colapsado, pedir }: { analise: AnaliseDTO; colapsado:
       </header>
 
       <div className="mt-3">
-        {s && analise.status === "ANSWERED" && <Tiles sessao={s} />}
-        <Corpo analise={analise} colapsado={colapsado} pedir={pedir} />
+        {s && <Tiles numeros={s.numeros} />}
+        <Corpo analise={analise} pedir={pedir} />
       </div>
     </article>
   );
@@ -162,16 +183,22 @@ function Chip({ children, forte = false }: { children: React.ReactNode; forte?: 
   );
 }
 
-function Corpo({ analise, colapsado, pedir }: { analise: AnaliseDTO; colapsado: boolean; pedir: () => Promise<void> }) {
-  switch (analise.status) {
-    case "PENDING":
-    case "ACKNOWLEDGED":
-      return <Skeleton />;
-    case "FAILED":
-      return <Falhou pedir={pedir} />;
-    case "ANSWERED":
-      return <Resposta texto={analise.answer ?? ""} colapsado={colapsado} />;
+/** Por que o texto não está na tela, dito em uma linha. */
+const SEM_TEXTO: Record<Exclude<EstadoDaAnalise, "ok" | "pendente">, string> = {
+  falhou: "O analista não respondeu desta vez.",
+  desatualizada: "A sessão mudou depois da análise (partidas reagrupadas); a análise antiga não vale mais.",
+  "outra-sessao": "A análise citava números de outra sessão e foi descartada.",
+  ilegivel: "A resposta do analista veio num formato que não dá para ler.",
+  incompleta: "Contadores incompletos da Steam nesta sessão: não há o que analisar.",
+};
+
+function Corpo({ analise, pedir }: { analise: AnaliseDTO; pedir: (analiseId?: string) => Promise<void> }) {
+  if (analise.estado === "pendente") return <Skeleton />;
+  if (analise.estado === "ok" && analise.leitura) {
+    return analise.leitura.forma === "estruturada" ? <Resposta leitura={analise.leitura.leitura} /> : <RespostaLegada lida={analise.leitura.lida} />;
   }
+  const estado = analise.estado === "ok" ? "ilegivel" : analise.estado;
+  return <SemTexto motivo={SEM_TEXTO[estado]} podePedir={analise.podePedirDeNovo} pedir={() => pedir(analise.id)} />;
 }
 
 function Skeleton() {
@@ -185,101 +212,96 @@ function Skeleton() {
   );
 }
 
-function Falhou({ pedir }: { pedir: () => Promise<void> }) {
+function SemTexto({ motivo, podePedir, pedir }: { motivo: string; podePedir: boolean; pedir: () => Promise<void> }) {
   const [ocupado, setOcupado] = useState(false);
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <p className="hud">Sem análise desta vez</p>
-      <button
-        type="button"
-        disabled={ocupado}
-        onClick={() => {
-          setOcupado(true);
-          void pedir().finally(() => setOcupado(false));
-        }}
-        className="text-sm text-accent underline decoration-accent/40 underline-offset-4 hover:decoration-accent disabled:opacity-50"
-      >
-        Pedir de novo
-      </button>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <p className="text-sm text-ink-faint">{motivo}</p>
+      {podePedir && (
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={() => {
+            setOcupado(true);
+            void pedir().finally(() => setOcupado(false));
+          }}
+          className="text-sm text-accent underline decoration-accent/40 underline-offset-4 hover:decoration-accent disabled:opacity-50"
+        >
+          Pedir de novo
+        </button>
+      )}
     </div>
   );
 }
 
-/** Os três números da sessão, cada um contra a sua referência: o "quanto" em tiles. */
-function Tiles({ sessao: s }: { sessao: NonNullable<AnaliseDTO["sessao"]> }) {
-  const tiles = [
-    { rotulo: "K/D", valor: s.kd, ref: s.referencia.kd, casas: 2, unit: undefined },
-    { rotulo: "Dano/round", valor: s.danoPorRound, ref: s.referencia.danoPorRound, casas: 0, unit: undefined },
-    { rotulo: "HS", valor: s.hs, ref: s.referencia.hs, casas: 0, unit: "%" },
-  ];
+/**
+ * Os três números da sessão, como a tabela de Sessões os mostra: o valor,
+ * o chip do insight e a referência por extenso. Sem número, o motivo.
+ */
+function Tiles({ numeros }: { numeros: NumeroDaSessao[] }) {
   return (
     <div className="mb-3 grid grid-cols-3 gap-2">
-      {tiles.map((t) => {
-        const normal = t.ref === null ? ({ tipo: "nenhum", motivo: "sem-sessoes" } as const) : ({ tipo: "vitalicio", valor: t.ref, rotulo: "vitalício" } as const);
-        const delta = calcularDelta({ unit: t.unit, melhorQuando: "sobe" }, t.valor, normal, s.rounds < 10);
-        return (
-          <div key={t.rotulo} className="rounded-xl bg-surface-2/60 px-3 py-2">
-            <p className="hud text-[10px]">{t.rotulo}</p>
-            <p className="num flex items-baseline gap-2 text-lg font-semibold">
-              {t.valor === null ? "—" : `${formatarNumero(t.valor, t.casas)}${t.unit ?? ""}`}
-              <DeltaChip delta={delta} />
+      {numeros.map((n) => (
+        <div key={n.chave} className="min-w-0 rounded-xl bg-surface-2/60 px-3 py-2">
+          <p className="hud text-[10px]">{n.rotulo}</p>
+          <p className="num flex flex-wrap items-baseline gap-x-2 text-lg font-semibold">
+            {n.texto}
+            {n.delta && <DeltaChip delta={n.delta} />}
+          </p>
+          {(n.referencia ?? n.motivo) && (
+            <p className="truncate text-[11px] text-ink-faint" title={n.referencia ?? n.motivo ?? undefined}>
+              {n.referencia ?? n.motivo}
             </p>
-          </div>
-        );
-      })}
+          )}
+        </div>
+      ))}
     </div>
   );
 }
 
-/** Um achado do agente: rótulo, valor contra referência em duas barras, chip. */
-function AchadoLinha({ achado: a }: { achado: Achado }) {
-  const normal = a.referencia === null ? ({ tipo: "nenhum", motivo: "sem-sessoes" } as const) : ({ tipo: "vitalicio", valor: a.referencia, rotulo: "vitalício" } as const);
-  const delta = calcularDelta({ unit: a.unidade === "%" ? "%" : undefined, melhorQuando: a.melhorQuando }, a.valor, normal);
-  const max = Math.max(Math.abs(a.valor), Math.abs(a.referencia ?? 0)) || 1;
-  const casas = a.unidade === "n" ? 0 : Math.abs(a.valor) >= 10 ? 0 : 2;
-  const fmt = (v: number) => `${formatarNumero(v, casas)}${a.unidade === "%" ? "%" : ""}`;
+/** Um achado: rótulo, a régua (sessão × normal na hora), o número, o chip e a base. */
+function AchadoLinha({ achado: a }: { achado: AchadoDaTela }) {
+  const valencia = a.delta.estado === "ok" ? a.delta.valencia : null;
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1.5">
       <div className="min-w-0">
-        <p className="truncate text-sm" title={a.nota ?? a.rotulo}>
+        <p className="truncate text-sm" title={`${a.rotulo} · ${a.base}`}>
           <span className="font-medium text-ink">{a.rotulo}</span>
-          {a.nota && <span className="text-ink-faint"> · {a.nota}</span>}
+          <span className="text-ink-faint"> · {a.base}</span>
         </p>
-        <div className="mt-1 flex flex-col gap-0.5" aria-hidden>
-          <span className="h-1.5 rounded bg-accent" style={{ width: `${Math.max(4, (Math.abs(a.valor) / max) * 100)}%` }} />
-          {a.referencia !== null && <span className="h-1.5 rounded bg-ink-faint/50" style={{ width: `${Math.max(4, (Math.abs(a.referencia) / max) * 100)}%` }} />}
-        </div>
+        <Regua className="mt-1.5" valor={a.valor} referencia={a.referencia} valencia={valencia} emPct={a.emPct} />
       </div>
       <p className="num flex items-center gap-2 text-sm whitespace-nowrap">
-        <span className="font-semibold">{fmt(a.valor)}</span>
-        {a.referencia !== null && <span className="text-ink-faint">vs {fmt(a.referencia)}</span>}
-        <DeltaChip delta={delta} />
+        <span className="font-semibold">{a.texto}</span>
+        {a.textoReferencia && <span className="text-ink-faint">{a.textoReferencia}</span>}
+        <DeltaChip delta={a.delta} />
       </p>
     </li>
   );
 }
 
-function Resposta({ texto, colapsado }: { texto: string; colapsado: boolean }) {
-  const estruturada = lerAnaliseEstruturada(texto);
-  if (estruturada) {
-    return (
-      <div>
-        <p className="truncate text-xl font-semibold tracking-tight text-ink" title={estruturada.manchete}>{estruturada.manchete}</p>
-        {estruturada.achados.length > 0 && (
-          <ul className="mt-2 divide-y divide-line-soft">
-            {estruturada.achados.map((a, i) => <AchadoLinha key={i} achado={a} />)}
-          </ul>
-        )}
-        {estruturada.causa && (
-          <p className="mt-2 truncate text-sm text-ink-muted" title={estruturada.causa}>
-            <span className="hud mr-2">porque</span>{estruturada.causa}
-          </p>
-        )}
-        {estruturada.acao && <Acao texto={estruturada.acao} />}
-      </div>
-    );
-  }
-  return <RespostaLegada texto={texto} colapsado={colapsado} />;
+function Resposta({ leitura }: { leitura: LeituraLimpa }) {
+  return (
+    <div>
+      <p className="truncate text-xl font-semibold tracking-tight text-ink" title={leitura.manchete}>
+        {leitura.manchete}
+      </p>
+      {leitura.achados.length > 0 && (
+        <ul className="mt-2 divide-y divide-line-soft">
+          {leitura.achados.map((a) => (
+            <AchadoLinha key={a.id} achado={a} />
+          ))}
+        </ul>
+      )}
+      {leitura.causa && (
+        <p className="mt-2 truncate text-sm text-ink-muted" title={leitura.causa}>
+          <span className="hud mr-2">porque</span>
+          {leitura.causa}
+        </p>
+      )}
+      {leitura.acao && <Acao texto={leitura.acao} />}
+    </div>
+  );
 }
 
 function Acao({ texto }: { texto: string }) {
@@ -287,7 +309,9 @@ function Acao({ texto }: { texto: string }) {
     <p className="mt-3 flex items-center gap-2.5 rounded-xl border border-accent/30 bg-accent-soft/60 px-4 py-2.5 text-sm text-ink">
       <ArrowRight className="size-4 shrink-0 text-accent" aria-hidden />
       <span className="hud text-accent">próxima</span>
-      <span className="truncate" title={texto}>{comNegrito(texto)}</span>
+      <span className="truncate" title={texto}>
+        {comNegrito(texto)}
+      </span>
     </p>
   );
 }
@@ -297,15 +321,16 @@ function Acao({ texto }: { texto: string }) {
  * manchete ou primeira frase — com "ler" para abrir o texto; a ação, que
  * sempre foi uma linha, continua em destaque.
  */
-function RespostaLegada({ texto, colapsado }: { texto: string; colapsado: boolean }) {
-  const { manchete, paragrafos, acao } = lerAnalise(texto);
+function RespostaLegada({ lida }: { lida: AnaliseLida }) {
+  const { manchete, paragrafos, acao } = lida;
   const [aberto, setAberto] = useState(false);
   const primeira = manchete ?? paragrafos[0]?.split(/(?<=[.!?])\s/)[0] ?? "";
-  void colapsado;
   return (
     <div>
       <p className="flex items-baseline gap-2">
-        <span className="min-w-0 truncate text-base font-medium text-ink" title={primeira}>{comNegrito(primeira)}</span>
+        <span className="min-w-0 truncate text-base font-medium text-ink" title={primeira}>
+          {comNegrito(primeira)}
+        </span>
         {paragrafos.length > 0 && (
           <button type="button" onClick={() => setAberto((v) => !v)} className="shrink-0 text-xs text-ink-faint transition hover:text-ink">
             {aberto ? "fechar ▴" : "ler ▾"}
@@ -314,7 +339,9 @@ function RespostaLegada({ texto, colapsado }: { texto: string; colapsado: boolea
       </p>
       {aberto && (
         <div className="mt-2 space-y-2 text-sm leading-relaxed text-ink-muted">
-          {paragrafos.map((bloco, i) => <p key={i}>{comNegrito(bloco.replace(/^\s*[-•*]\s+/gm, "").split("\n").join(" "))}</p>)}
+          {paragrafos.map((bloco, i) => (
+            <p key={i}>{comNegrito(bloco.replace(/^\s*[-•*]\s+/gm, "").split("\n").join(" "))}</p>
+          ))}
         </div>
       )}
       {acao && <Acao texto={acao} />}

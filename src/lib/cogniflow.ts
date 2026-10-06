@@ -46,10 +46,19 @@ export function parseConversationId(value: string): { userId: string; appId: num
   return { userId: value.slice(0, i), appId };
 }
 
-/** O que o agente recebe de volta em `context` quando pede dados. */
+/**
+ * O que o agente recebe de volta em `context` quando pede dados.
+ *
+ * `sessao` amarra o turno à sessão perguntada: a coleta que a fecha e o
+ * modo provado dela. Com isso `/api/cogniflow/data` corta a série nessa
+ * coleta e toda view lê aquela sessão, não "a última" na hora do turno
+ * (`recortarParaSessao`). Opcional: perguntas anteriores a 05/10/2026 não
+ * têm, e sem ele as views leem a série inteira, como antes.
+ */
 export type ContextoDaPergunta = {
   userId: string;
   appId: number;
+  sessao?: { ate: string; modo: string | null };
 };
 
 export async function enviarPergunta(
@@ -60,14 +69,17 @@ export async function enviarPergunta(
     appId: number;
     personaName: string;
     texto: string;
+    sessao?: { ate: string; modo: string | null };
   },
 ): Promise<void> {
+  const contexto: ContextoDaPergunta = { userId: pergunta.userId, appId: pergunta.appId };
+  if (pergunta.sessao) contexto.sessao = pergunta.sessao;
   const body = JSON.stringify({
     client_id: config.clientId,
     conversation_id: conversationId(pergunta.userId, pergunta.appId),
     sender: { id: pergunta.userId, name: pergunta.personaName },
     message: { id: pergunta.id, text: pergunta.texto },
-    context: { userId: pergunta.userId, appId: pergunta.appId } satisfies ContextoDaPergunta,
+    context: contexto,
   });
 
   const res = await fetch(config.webhookUrl, {

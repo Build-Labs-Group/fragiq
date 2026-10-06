@@ -43,7 +43,8 @@ export const carregarFonte = cache(async (userId: string, appId: number): Promis
   });
 });
 
-async function montarFonte(userId: string, appId: number): Promise<Fonte | null> {
+/** A fonte lida direto do banco, sem o cache do Next: para scripts fora de uma requisição. */
+export async function montarFonte(userId: string, appId: number): Promise<Fonte | null> {
   const userGame = await prisma.userGame.findUnique({
     where: { userId_gameAppId: { userId, gameAppId: appId } },
     select: {

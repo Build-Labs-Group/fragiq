@@ -67,6 +67,18 @@ describe("donaDaResposta", () => {
     expect(donaDaResposta({ id: "outro" }, CONVERSA, abertas, CONEXAO)).toEqual({ perguntaId: null, motivo: "ambigua" });
   });
 
+  it("pergunta refeita: a resposta à versão atual (`<id>.<n>`) acha a dona", () => {
+    const perguntas = [{ id: "pergunta-a", aberta: true, repedidos: 2 }, { id: "pergunta-x", aberta: true }];
+    const id = idDaResposta(CONEXAO, CONVERSA, "pergunta-a.2");
+    expect(donaDaResposta({ id }, CONVERSA, perguntas, CONEXAO)).toEqual({ perguntaId: "pergunta-a", prova: "id_derivado" });
+  });
+
+  it("pergunta refeita: a resposta atrasada da versão anterior não grava (leu a sessão de antes)", () => {
+    const perguntas = [{ id: "pergunta-a", aberta: true, repedidos: 1 }];
+    const id = idDaResposta(CONEXAO, CONVERSA, "pergunta-a");
+    expect(donaDaResposta({ id }, CONVERSA, perguntas, CONEXAO)).toEqual({ perguntaId: null, motivo: "versao_anterior" });
+  });
+
   it("sem conexão configurada, cai na regra da única aberta", () => {
     const id = idDaResposta(CONEXAO, CONVERSA, "pergunta-b");
     expect(donaDaResposta({ id }, CONVERSA, abertas, null)).toEqual({ perguntaId: null, motivo: "ambigua" });
@@ -148,6 +160,18 @@ describe("POST /api/cogniflow/callback", () => {
     expect(await res.json()).toMatchObject({ conflict: true });
     expect(prisma.analysis.update).not.toHaveBeenCalled();
     expect(registrar).toHaveBeenCalledWith("analise.resposta_conflito", expect.anything());
+  }, 30_000);
+
+  it("resposta de pergunta refeita grava, mas não manda de novo a mensagem da Steam", async () => {
+    prisma.analysis.findMany.mockResolvedValue([
+      { id: "pergunta-a", status: "PENDING", historico: [{ em: "2026-10-05T20:00:00.000Z", motivo: "outra-sessao", respostaAnterior: "{}" }] },
+    ]);
+    const { POST } = await import("@/app/api/cogniflow/callback/route");
+    const res = await POST(resposta(idDaResposta(CONEXAO, CONVERSA, "pergunta-a.1")) as never);
+
+    expect(res.status).toBe(200);
+    expect(prisma.analysis.update.mock.calls[0][0].where).toEqual({ id: "pergunta-a" });
+    expect(enfileirarAnaliseNoSteam).not.toHaveBeenCalled();
   }, 30_000);
 
   it("resposta repetida (mesmo id) não escreve de novo", async () => {
