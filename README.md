@@ -432,7 +432,11 @@ src/lib/
   cogniflow-api.ts            chamada assinada de uma capability (fora do turno)
   modo.ts / modo-servidor.ts  o modo como navegação: abas, URL, cookie
   pendencias.ts               o que falta compartilhar, e o aviso no chat
-  analise-texto.ts            manchete / parágrafos / ação da resposta do analista
+  analise-texto.ts            leitura tolerante da resposta do analista (estruturada, prosa ou ilegível)
+  analise-sessao.ts           uma análise, uma janela: estado do cartão e recorte do turno à sessão
+  achados.ts                  achados do analista recalculados da sessão, conferidos e limpos
+  direcao.ts                  para que lado é melhor, por métrica (nunca o modelo)
+  metricas-tela.ts            aba Métricas: destaques em cartões, o resto em grade
   segredos.ts                 segredos do SSM (AWS) ou do Secrets Manager via OIDC (Vercel), preguiçosos
   pg-config.ts                SSL do pg (Prisma e migrações da AWS)
   steam/openid.ts             OpenID 2.0

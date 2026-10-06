@@ -313,6 +313,21 @@ model Analysis {
   /// repetida chega com o mesmo ID, e é assim que a repetição é descartada.
   replyId String? @unique
 
+  /// A sessão que a pergunta descreveu, como estava na hora de perguntar:
+  /// coletas de/até e os totais do intervalo (`lib/analise-sessao.ts`). A
+  /// tela só mostra a análise enquanto a sessão de hoje bate com ela; se a
+  /// sessão mudou, a análise fica desatualizada e é pedida de novo. Nula nas
+  /// análises anteriores a 05/10/2026, que são conferidas pelo conteúdo.
+  janela     Json?
+  /// sha256 da janela, para comparar sem abrir o JSON.
+  janelaHash String?
+  /// Quando a pergunta saiu pela última vez. Pedir de novo muda isto; o
+  /// `createdAt` continua sendo a primeira vez.
+  pedidaEm   DateTime?
+  /// Correções feitas nesta linha, da mais antiga à mais recente: quando,
+  /// por quê e o texto que havia antes (`[{ em, motivo, respostaAnterior }]`).
+  historico  Json?
+
   createdAt      DateTime  @default(now())
   acknowledgedAt DateTime?
   answeredAt     DateTime?

@@ -63,18 +63,31 @@ export function idDaResposta(conexao: Conexao, conversationId: string, perguntaI
   );
 }
 
-export type Pergunta = { id: string; aberta: boolean };
+/**
+ * Uma pergunta da conversa. `repedidos` é quantas vezes ela saiu de novo
+ * (`pedirDeNovo` em `lib/analises.ts`): cada repetição sai com o id de
+ * mensagem `<id>.<n>`, porque o cogniflow descarta um id já visto, e a
+ * resposta a ela tem o id derivado desse.
+ */
+export type Pergunta = { id: string; aberta: boolean; repedidos?: number };
+
+/** Os ids de mensagem com que a pergunta saiu: o dela e um por repetição. */
+export function mensagensDaPergunta(p: Pick<Pergunta, "id" | "repedidos">): string[] {
+  return [p.id, ...Array.from({ length: p.repedidos ?? 0 }, (_, i) => `${p.id}.${i + 1}`)];
+}
 
 export type Dona =
   | { perguntaId: string; prova: "reply_to" | "id_derivado" | "unica_aberta" }
-  | { perguntaId: null; motivo: "nenhuma_aberta" | "ambigua" };
+  | { perguntaId: null; motivo: "nenhuma_aberta" | "ambigua" | "versao_anterior" };
 
 /**
  * Escolhe a pergunta dona da resposta entre as perguntas da conversa.
  *
  * `perguntas` são as da conversa (abertas e fechadas, das mais recentes):
  * uma resposta atrasada a uma pergunta já dada como perdida ainda acha a
- * dona pelo id, e não cai na pergunta seguinte.
+ * dona pelo id, e não cai na pergunta seguinte. A resposta a uma versão
+ * anterior de uma pergunta que já saiu de novo (`repedidos`) não tem dona:
+ * a pergunta espera a resposta da versão atual, que leu a sessão de hoje.
  */
 export function donaDaResposta(
   resposta: { id: string; replyToMessageId?: string | null },
@@ -83,14 +96,21 @@ export function donaDaResposta(
   conexao: Conexao | null,
 ): Dona {
   if (resposta.replyToMessageId) {
-    const alvo = perguntas.find((p) => p.id === resposta.replyToMessageId);
-    if (alvo) return { perguntaId: alvo.id, prova: "reply_to" };
+    const alvo = perguntas.find((p) => mensagensDaPergunta(p).includes(resposta.replyToMessageId!));
+    if (alvo) return daVersaoAtual(alvo, resposta.replyToMessageId!, "reply_to");
   }
   if (conexao) {
-    const alvo = perguntas.find((p) => idDaResposta(conexao, conversationId, p.id) === resposta.id);
-    if (alvo) return { perguntaId: alvo.id, prova: "id_derivado" };
+    for (const p of perguntas) {
+      const m = mensagensDaPergunta(p).find((m) => idDaResposta(conexao, conversationId, m) === resposta.id);
+      if (m) return daVersaoAtual(p, m, "id_derivado");
+    }
   }
   const abertas = perguntas.filter((p) => p.aberta);
   if (abertas.length === 1) return { perguntaId: abertas[0].id, prova: "unica_aberta" };
   return { perguntaId: null, motivo: abertas.length === 0 ? "nenhuma_aberta" : "ambigua" };
+}
+
+function daVersaoAtual(p: Pergunta, mensagem: string, prova: "reply_to" | "id_derivado"): Dona {
+  const atual = mensagensDaPergunta(p).at(-1);
+  return mensagem === atual ? { perguntaId: p.id, prova } : { perguntaId: null, motivo: "versao_anterior" };
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { lerCorpoAssinado, parseConversationId } from "@/lib/cogniflow";
 import { carregarFonte } from "@/lib/fonte";
 import { consultar, ViewInvalida } from "@/lib/analista";
+import { recortarParaSessao } from "@/lib/analise-sessao";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,12 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   conversation_id: z.string().min(1),
-  context: z.object({ userId: z.string().min(1), appId: z.number().int().positive() }),
+  context: z.object({
+    userId: z.string().min(1),
+    appId: z.number().int().positive(),
+    /** A sessão perguntada (perguntas de sessão desde 05/10/2026): o turno lê só ela. */
+    sessao: z.object({ ate: z.string().min(1), modo: z.string().nullable() }).optional(),
+  }),
   view: z.string().min(1),
   params: z.record(z.string(), z.unknown()).optional(),
 });
@@ -47,8 +53,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Este jogador não tem série para este jogo." }, { status: 404 });
   }
 
+  let alvo = { fonte, params: params ?? {} };
+  if (context.sessao) {
+    // Pergunta de sessão: o turno lê a sessão perguntada, não a última.
+    const recorte = recortarParaSessao(fonte, context.sessao, alvo.params);
+    if (!recorte) {
+      return NextResponse.json(
+        { error: "A sessão desta pergunta não existe mais (foi refeita). Responda só que a análise será pedida de novo." },
+        { status: 409 },
+      );
+    }
+    alvo = recorte;
+  }
+
   try {
-    return NextResponse.json(consultar(fonte, view, params ?? {}));
+    return NextResponse.json(consultar(alvo.fonte, view, alvo.params));
   } catch (e) {
     if (e instanceof ViewInvalida) {
       return NextResponse.json({ error: e.message }, { status: 400 });
