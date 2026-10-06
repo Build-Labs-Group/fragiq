@@ -188,15 +188,39 @@ export function conferirAnalise(analise: AnaliseEstruturada, janela: JanelaLida)
     const escrito = c.emPct && a.valor <= 1 && nosso > 1.5 ? a.valor * 100 : a.valor;
     if (Math.abs(escrito - nosso) > folga(m, nosso)) divergencias.push({ rotulo: a.rotulo, escrito: a.valor, daSessao: nosso });
   }
+  divergencias.push(...roundsCitados([analise.manchete, analise.causa ?? "", ...analise.achados.map((a) => a.nota ?? "")], janela));
+  return divergencias;
+}
+
+/** Todo "N rounds" escrito tem que ser os rounds da sessão. */
+function roundsCitados(textos: string[], janela: JanelaLida): Divergencia[] {
   const rounds = deltaEntre(janela.par, "total_rounds_played");
-  if (rounds !== null) {
-    const textos = [analise.manchete, analise.causa ?? "", ...analise.achados.map((a) => a.nota ?? "")];
-    for (const t of textos) {
-      for (const m of t.matchAll(/(\d+)\s+(rounds?|rodadas?)\b(?!\s+(ganhos|vencidos|perdidos|de base))/gi)) {
-        const n = Number(m[1]);
-        if (n !== rounds) divergencias.push({ rotulo: "rounds citados", escrito: n, daSessao: rounds });
-      }
+  if (rounds === null) return [];
+  const divergencias: Divergencia[] = [];
+  for (const t of textos) {
+    for (const m of t.matchAll(/(\d+)\s+(rounds?|rodadas?)\b(?!\s+(ganhos|vencidos|perdidos|de base))/gi)) {
+      const n = Number(m[1]);
+      if (n !== rounds) divergencias.push({ rotulo: "rounds citados", escrito: n, daSessao: rounds });
     }
+  }
+  return divergencias;
+}
+
+/**
+ * A mesma conferência para uma resposta em prosa (o modelo às vezes ignora
+ * o formato e escreve markdown): os rounds citados e o K/D escrito como
+ * "K/D: 0.67". Prosa não tem achados para recalcular, então é o que dá
+ * para provar — e é o que denunciava a análise de outra sessão.
+ */
+export function conferirProsa(texto: string, janela: JanelaLida): Divergencia[] {
+  const divergencias = roundsCitados([texto], janela);
+  const kills = deltaEntre(janela.par, "total_kills");
+  const deaths = deltaEntre(janela.par, "total_deaths");
+  const m = /K\/D(?:\*\*)?\s*:?\s*(?:\*\*)?\s*(\d+[.,]\d+)/i.exec(texto);
+  if (m && kills !== null && deaths) {
+    const nosso = kills / deaths;
+    const escrito = Number(m[1].replace(",", "."));
+    if (Math.abs(escrito - nosso) > Math.max(0.02, nosso * 0.02)) divergencias.push({ rotulo: "K/D", escrito, daSessao: nosso });
   }
   return divergencias;
 }

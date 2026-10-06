@@ -34,8 +34,6 @@ const POR_CHAVE: Record<string, Direcao> = {
   total_dominations: "sobe",
   total_domination_overkills: "sobe",
   total_revenges: "sobe",
-  total_contribution_score: "sobe",
-  total_money_earned: "sobe",
   total_gun_game_rounds_won: "sobe",
   total_gg_matches_won: "sobe",
   total_progressive_matches_won: "sobe",
@@ -51,6 +49,11 @@ const POR_CHAVE: Record<string, Direcao> = {
   total_gg_matches_played: "nenhuma",
   total_gun_game_rounds_played: "nenhuma",
   total_gun_game_contribution_score: "nenhuma",
+  // Consequência, não desempenho: dinheiro e pontos do placar sobem com
+  // qualquer coisa (plantar, sobreviver, perder rounds com bônus). Com lado,
+  // o dinheiro ocupava o primeiro cartão da aba Métricas.
+  total_money_earned: "nenhuma",
+  total_contribution_score: "nenhuma",
 };
 
 const PADROES: [RegExp, Direcao][] = [
@@ -58,7 +61,9 @@ const PADROES: [RegExp, Direcao][] = [
   [/^total_shots_/, "nenhuma"],
   [/^total_rounds_map_/, "nenhuma"],
   [/^total_kills_[a-z0-9]+$/, "sobe"],
-  [/^total_hits_[a-z0-9]+$/, "sobe"],
+  // Acertos por round com uma arma medem quanto ela foi usada; a mira é a
+  // precisão (acertos / tiros), que é estatística do painel, não daqui.
+  [/^total_hits_/, "nenhuma"],
   [/^total_wins_map_/, "sobe"],
   [/^total_matches_won_/, "sobe"],
 ];

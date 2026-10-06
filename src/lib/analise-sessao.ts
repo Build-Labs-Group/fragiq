@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { ultimoPar, type SnapshotRow } from "./series";
-import { conferirAnalise, leituraDaTela, AMOSTRA_MINIMA_ROUNDS, type Divergencia, type JanelaLida, type LeituraLimpa } from "./achados";
+import { conferirAnalise, conferirProsa, leituraDaTela, AMOSTRA_MINIMA_ROUNDS, type Divergencia, type JanelaLida, type LeituraLimpa } from "./achados";
 import { lerResposta, type AnaliseLida } from "./analise-texto";
 import type { Fonte } from "./analista";
 
@@ -165,7 +165,14 @@ export function avaliarResposta(args: {
   }
   const lida = lerResposta(args.resposta);
   if (lida.forma === "ilegivel") return { estado: "ilegivel", leitura: null, divergencias: [] };
-  if (lida.forma === "prosa") return { estado: "ok", leitura: { forma: "prosa", lida: lida.lida }, divergencias: [] };
+  if (lida.forma === "prosa") {
+    // Uma linha só ("Resumo da nova sessão no modo Competitivo") não é análise.
+    const blocos = lida.lida.paragrafos.length + (lida.lida.manchete ? 1 : 0) + (lida.lida.acao ? 1 : 0);
+    if (blocos < 2) return { estado: "ilegivel", leitura: null, divergencias: [] };
+    const divergencias = args.janela ? conferirProsa(args.resposta, args.janela) : [];
+    if (divergencias.length > 0) return { estado: "outra-sessao", leitura: null, divergencias };
+    return { estado: "ok", leitura: { forma: "prosa", lida: lida.lida }, divergencias: [] };
+  }
   if (!args.janela) {
     return { estado: "ok", leitura: { forma: "estruturada", leitura: { manchete: lida.analise.manchete, achados: [], causa: null, acao: lida.analise.acao } }, divergencias: [] };
   }
