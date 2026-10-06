@@ -94,8 +94,53 @@ nenhuma. Pergunta aberta há mais de 30 min dispara o alarme
 
 Reparo do que já estava deslocado: `scripts/banco/reparar-analises.ts`
 (simula por padrão; `--aplicar` grava numa transação por conversa, com
-auditoria em `eventos`). Rodado em 04/10/2026 (resultado em
-`backlog/itens/FQ-0005-analise-de-outra-sessao.md`).
+auditoria em `eventos`). Rodado em 05/10/2026 depois do merge do PR #23
+(11 perguntas de uma conversa; backup e auditoria em
+`s3://fragiq-backups-576951332499/analyses/2026-10-05/`).
+
+### A sessão perguntada (desde 05/10/2026)
+
+A dona certa não bastava: o turno lia "a última sessão" na hora em que
+rodava, e numa sessão sem modo o agente trazia da memória da conversa o
+modo da sessão anterior. A sessão de 01/10 00:22 (K/D 0,67) recebeu os
+achados da de 30/09 23:22 (K/D 1,47) assim, com a pergunta e a resposta na
+mesma linha. Três amarras (`src/lib/analise-sessao.ts`):
+
+1. **Na pergunta**: a análise grava a janela (`analyses.janela` e
+   `janelaHash`: coletas de/até e os totais da sessão) e o `context` leva
+   `sessao: { ate: "<id da coleta que fecha a sessão>", modo: "<modo provado ou null>" }`.
+   Campo opcional: o cogniflow devolve o `context` como recebeu.
+2. **No turno**: `/api/cogniflow/data` corta a série nessa coleta e troca o
+   `modo`/`mapa` que o modelo pedir pelo da sessão (`recortarParaSessao`).
+   Coleta que não existe mais devolve 409 com uma frase para o modelo.
+3. **Na tela**: `avaliarResposta` só deixa o texto aparecer se a sessão de
+   hoje ainda tem o mesmo hash (`desatualizada` se não) e se os números
+   que o texto cita batem com ela (`outra-sessao` se não). Nos dois casos,
+   e em `ilegivel` e `falhou`, a análise é **pedida de novo**.
+
+Pedir de novo reaproveita a linha (o `snapshotId` é único): o texto
+anterior vai para `analyses.historico` com o motivo, e a mensagem sai com o
+id `<id da análise>.<n>`, porque o cogniflow descarta como repetida uma
+mensagem com id já visto. O callback acha a dona por esse id (o `id` da
+resposta é derivado dele) e ignora a resposta atrasada de uma versão
+anterior (`versao_anterior` no diário). Resposta de pergunta refeita não
+manda outra mensagem no chat da Steam. No máximo `MAX_REPEDIDOS = 3` por
+análise, e nunca com outra pergunta em aberto na conversa.
+
+O que o modelo escreve nos achados é matéria-prima: o FragIQ resolve o
+rótulo para uma métrica que sabe calcular (`src/lib/achados.ts`),
+recalcula valor e referência da sessão, tira os três que o cartão já mostra
+(K/D, dano por round, HS), e a direção vem de `src/lib/direcao.ts` — o
+`melhorQuando` do modelo é ignorado. Manchete, causa e ação passam por
+`limparFrase` (modo e mapa que a sessão não provou, "precision") e a causa
+que cita arma fora dos achados sai. A leitura do JSON é tolerante
+(`lerResposta`): texto em volta e cerca de código são ignorados, o que
+passa dos tamanhos do prompt é cortado em vez de recusado, e JSON quebrado
+é lido campo a campo. O usuário nunca vê JSON.
+
+Reprocesso: `scripts/banco/reprocessar-analises.ts` (lista por padrão;
+`--aplicar` grava a janela das antigas que conferem; `--pedir` pede de
+novo, uma por vez, as que não podem ir para a tela).
 
 ## Provisionamento
 
@@ -290,7 +335,9 @@ Implementado em `src/lib/analista.ts`; o prompt abaixo descreve o mesmo
 contrato para o modelo. **Mudar um sem o outro quebra o analista em
 silêncio.** Todo `params` aceita `modo` e `mapa` (ids crus: `competitive`,
 `de_dust2`) como recorte por contexto de partida, quando o bot de presença
-registrou.
+registrou. Em pergunta de sessão (`context.sessao`), a série termina na
+coleta da sessão e `modo`/`mapa` são os da sessão, não os pedidos (seção
+"A sessão perguntada").
 
 | view | params | devolve |
 |---|---|---|

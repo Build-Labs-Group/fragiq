@@ -521,15 +521,32 @@ porcentagem punha cinco abates de MP9 (+4540 % sobre uma base minúscula) na
 frente de 125 abates a mais que o normal. `relevante` exige ao menos
 `MINIMO_NO_PERIODO = 5` eventos no período e vitalício maior que zero.
 
-Na tela: chips de grupo (`Geral · Por arma · Por mapa · Última partida`),
-busca, e uma linha por métrica com label, total no período, período,
-referência (rotulada `normal do modo` / `vitalício` / `vitalício · sem
-base`), chip e sparkline. O grupo congelado fica colapsado no fim.
+Na tela (05/10/2026, `lib/metricas-tela.ts`), duas partes:
+
+1. **O que mais mudou** (`metricas-destaque.tsx`): até seis cartões com os
+   contadores que se moveram de verdade na última sessão da lente
+   (`relevante`), que **têm lado** e cujo chip saiu do ruído, na ordem do
+   impacto. Anatomia do cartão de estatística (2.3): rótulo em português
+   (`rotularMetrica`), número por round com chip, uma linha de referência
+   (`vitalício` / `normal do modo` / `vitalício · modo sem base`), a
+   régua, e no rodapé o impacto em eventos (`+13 a mais que o seu normal`)
+   com a tendência. Acima, o recorte `última sessão` e contra o quê.
+2. **Todas as métricas**: o resto em **ladrilhos de altura fixa** (`h-16`)
+   numa grade de 2/3/4 colunas com **rolagem própria** (`max-h-[26rem]`),
+   com chips de grupo e busca. Mesma ordem de camadas; os que não se
+   moveram na sessão vão apagados no fim. Os contadores de última partida
+   ficam fora da grade, num `details`.
+
+**Direção por tabela** (`lib/direcao.ts`): kills, dano, vitórias, MVPs
+sobem; mortes descem; volume (rounds, tiros, partidas, janelas) e "última
+partida" não têm lado. Até 05/10 todo chip da aba era cinza; agora a cor
+diz se o movimento foi bom. Contador fora da tabela é "nenhuma" — chip
+cinza, nunca uma valência inventada. Volume não é destaque.
 
 ### 4.6 Análises — `analista/page.tsx`
 
-Histórico das leituras do analista, uma por sessão: a mais recente aberta,
-as anteriores colapsadas. Sem bloco de números, sem `glow`.
+Histórico das leituras do analista, uma por sessão, da mais recente à mais
+antiga, cada uma no cartão do §5. Sem `glow`.
 
 ### 4.7 `painel/[key]` — a estatística de perto
 
@@ -608,11 +625,36 @@ produção. Análises antigas e respostas desobedientes começam pelo corpo. A
 ação é a última linha começando por `→` (inclusive quando colada no fim de
 um parágrafo, via `separarAcaoColada`).
 
-Estados do corpo, por `status`: `PENDING`/`ACKNOWLEDGED` → skeleton com o
-cabeçalho real; `FAILED` → `Sem análise desta vez` + `Pedir de novo` (POST
-`/api/analises`); `ANSWERED` → manchete opcional, corpo (`line-clamp-2` com
-manchete, 3 sem, e `ler análise ▾` no Resumo; aberto em Análises) e a ação
-em caixa `border-accent/30`.
+**Todo número do cartão é nosso** (05/10/2026). Os três tiles (K/D,
+dano/round, HS) vêm da sessão materializada e dos insights dela — o mesmo
+chip da tabela de Sessões, então `1,66 ▲132%` não aparece com outro
+percentual no achado ao lado. Os achados do modelo são recalculados da
+sessão (`lib/achados.ts`): o rótulo vira uma métrica conhecida, o valor
+sai do par de coletas, a referência é o normal na hora, a cor é a da
+tabela de `lib/direcao.ts`; os que repetem os tiles saem, e rótulo que
+não se resolve não vai para a tela. Sessão com menos de 10 rounds não tem
+taxa por round (`2 rounds: pouco para uma taxa por round`), e sessão com
+contadores impossíveis (`sessaoIncompleta`: mais de 5 kills ou 500 de dano
+por round, como 1 round com 4.364 de dano) não tem número nem análise.
+
+**O usuário nunca vê JSON.** O servidor lê a resposta
+(`lerResposta`: tolerante a texto em volta, tamanho e JSON quebrado) e
+entrega ao cartão um `estado` (`lib/analise-sessao.ts`):
+
+| estado | o cartão mostra |
+|---|---|
+| `pendente` | skeleton com o cabeçalho real |
+| `ok` | manchete, achados (régua + chip + base), `porque` e a ação em caixa `border-accent/30` |
+| `desatualizada` | "A sessão mudou depois da análise…" + `Pedir de novo` |
+| `outra-sessao` | "A análise citava números de outra sessão…" + `Pedir de novo` |
+| `ilegivel` / `falhou` | uma linha + `Pedir de novo` |
+| `incompleta` | "Contadores incompletos da Steam…", sem botão |
+
+A mais recente que precisa é pedida de novo sozinha, uma vez; as outras,
+pelo botão. O servidor decide se pode (`podePedirDeNovo`, POST
+`/api/analises` com `analiseId`), e a mecânica está em
+`docs/cogniflow-tenant.md`, "A sessão perguntada". Prosa antiga (anterior
+a 17/09) continua numa linha com `ler ▾`.
 
 O renderizador entende negrito e listas, e só. Um renderizador de markdown
 inteiro traria tabelas e cabeçalhos que não cabem num cartão.
@@ -656,6 +698,11 @@ não insiste; o chat, com limite, sim.
 `tests/lib/`: `series.test.ts` (pares derivados, atraso da Steam, bucketing,
 normal), `leituras.test.ts` (relevância, impacto, camadas),
 `leituras-sessoes.test.ts`, `analise-texto.test.ts` (manchete marcada vs
-introdução curta), `analista.test.ts` (views). Rodam com
+introdução curta; as respostas de produção que viraram JSON na tela),
+`analista.test.ts` (views), `achados.test.ts` (achados recalculados,
+direção pela tabela, conferência, limpeza do texto),
+`analise-sessao.test.ts` (janela, estados, recorte do turno),
+`analises.test.ts` (banco → cartão e o que `pedirDeNovo` grava),
+`metricas-tela.test.ts` (destaques × grade, cor, impacto). Rodam com
 `npx tsc --noEmit -p tsconfig.json`, `npm run lint` e `npm test`, que é o
 que o CI roda.
