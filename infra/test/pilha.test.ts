@@ -132,6 +132,39 @@ describe("migrações e agenda", () => {
     expect(politicas(antes.t)).toContain("lambda:InvokeFunction");
   });
 
+  it("saúde dos dados de 30 em 30 min, pela mesma Lambda, ligada com a agenda", () => {
+    depois.t.hasResourceProperties("AWS::Scheduler::Schedule", {
+      Name: "fragiq-saude-dos-dados",
+      ScheduleExpression: "cron(0,30 * * * ? *)",
+      State: "ENABLED",
+      Target: Match.objectLike({ Input: JSON.stringify({ origem: "saude" }) }),
+    });
+    antes.t.hasResourceProperties("AWS::Scheduler::Schedule", { Name: "fragiq-saude-dos-dados", State: "DISABLED" });
+  });
+
+  it("um alarme por pendência e um para a checagem parada, no tópico de alertas", () => {
+    const topico = `arn:aws:sns:${REGIAO}:${CONTA}:cogniflow-alertas`;
+    for (const nome of ["PartidasSemSessao", "AnalisesSemResposta", "CapturasVencidas"]) {
+      depois.t.hasResourceProperties("AWS::CloudWatch::Alarm", {
+        Namespace: "FragIQ",
+        MetricName: nome,
+        Threshold: 1,
+        ComparisonOperator: "GreaterThanOrEqualToThreshold",
+        TreatMissingData: "notBreaching",
+        AlarmActions: [topico],
+      });
+    }
+    depois.t.hasResourceProperties("AWS::CloudWatch::Alarm", {
+      AlarmName: "fragiq-saude-sem-medicao",
+      Statistic: "SampleCount",
+      ComparisonOperator: "LessThanThreshold",
+      TreatMissingData: "breaching",
+    });
+    depois.t.resourceCountIs("AWS::CloudWatch::Alarm", 4);
+    // O tópico é referência: a pilha do FragIQ não cria nem apaga.
+    depois.t.resourceCountIs("AWS::SNS::Topic", 0);
+  });
+
   it("logs com retenção de um mês", () => {
     antes.t.hasResourceProperties("AWS::Logs::LogGroup", { LogGroupName: "/aws/lambda/fragiq-site", RetentionInDays: 30 });
   });

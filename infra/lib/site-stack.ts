@@ -3,11 +3,14 @@ import { CfnOutput, CustomResource, Duration, RemovalPolicy, Stack, type StackPr
 import { ApiMapping, DomainName, HttpApi, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
+import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
+import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, type NodejsFunctionProps, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Schedule, ScheduleExpression, ScheduleTargetInput } from "aws-cdk-lib/aws-scheduler";
+import * as sns from "aws-cdk-lib/aws-sns";
 import { LambdaInvoke } from "aws-cdk-lib/aws-scheduler-targets";
 import { Trigger } from "aws-cdk-lib/triggers";
 import { Provider } from "aws-cdk-lib/custom-resources";
@@ -36,7 +39,11 @@ const BANNER_ESM = "import { createRequire } from 'module'; const require = crea
  * - **migrações**: Trigger que aplica `prisma/migrations` antes de cada
  *   versão nova do site;
  * - **agenda**: EventBridge Scheduler diário que chama `/api/cron/sync`,
- *   desligado até a virada (até lá quem coleta é o cron da Vercel).
+ *   desligado até a virada (até lá quem coleta é o cron da Vercel);
+ * - **saúde dos dados**: a mesma Lambda de 30 em 30 min chama
+ *   `/api/cron/saude`, que publica `FragIQ/PartidasSemSessao`,
+ *   `AnalisesSemResposta` e `CapturasVencidas`; um alarme por métrica, e
+ *   um para a checagem que parou de rodar, avisam pelo tópico de alertas.
  *
  * Segredos e configuração vêm de um parâmetro só (`/fragiq/prod/site`),
  * lido em tempo de execução pela role de cada Lambda. Parado, custa centavos.
@@ -250,7 +257,7 @@ export class SiteStack extends Stack {
       this,
       "Agenda",
       base("agenda", {
-        description: "Coleta diaria: chama /api/cron/sync na Lambda do site",
+        description: "Coleta diaria (/api/cron/sync) e saude dos dados (/api/cron/saude) na Lambda do site",
         entry: fonte("agenda-handler.ts"),
         handler: "handler",
         memorySize: 256,
@@ -277,6 +284,54 @@ export class SiteStack extends Stack {
         retryAttempts: 1,
       }),
     });
+
+    // ---- Saúde dos dados ------------------------------------------------------
+    // Às :00 e :30, junto com o turno do bot em repouso: o Neon já está
+    // acordado nessa hora, e a checagem não abre uma janela de cobrança nova.
+    new Schedule(this, "SaudeDosDados", {
+      scheduleName: `${prefixo}-saude-dos-dados`,
+      description: "Partida sem sessao, analise sem resposta e captura vencida, de 30 em 30 min",
+      schedule: ScheduleExpression.cron({ minute: "0,30" }),
+      enabled: ambiente.agendaLigada,
+      target: new LambdaInvoke(agenda, {
+        input: ScheduleTargetInput.fromObject({ origem: "saude" }),
+        retryAttempts: 0,
+      }),
+    });
+
+    const alertas = new SnsAction(sns.Topic.fromTopicArn(this, "TopicoDeAlertas", ambiente.topicoDeAlertas));
+    const metrica = (nome: string, estatistica = "Maximum") =>
+      new cloudwatch.Metric({ namespace: "FragIQ", metricName: nome, statistic: estatistica, period: Duration.hours(1) });
+    const pendencias: [string, string, string][] = [
+      ["PartidasSemSessao", "partidas-sem-sessao", "Partida do GC terminada ha mais de 24 h que nenhuma sessao do jogador contem (ver /admin, Dados em dia)"],
+      ["AnalisesSemResposta", "analises-sem-resposta", "Pergunta ao analista (cogniflow) aberta ha mais de 30 min"],
+      ["CapturasVencidas", "capturas-vencidas", "Captura pendente vencida ha mais de 1 h: o tick do bot ou o cron nao esta rodando"],
+    ];
+    for (const [nome, sufixo, descricao] of pendencias) {
+      const alarme = new cloudwatch.Alarm(this, `Alarme${nome}`, {
+        alarmName: `${prefixo}-${sufixo}`,
+        alarmDescription: descricao,
+        metric: metrica(nome),
+        threshold: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      });
+      alarme.addAlarmAction(alertas);
+      alarme.addOkAction(alertas);
+    }
+    // Sem medição, os três acima ficam em OK calados: este pega a checagem parada.
+    const semMedicao = new cloudwatch.Alarm(this, "AlarmeSaudeSemMedicao", {
+      alarmName: `${prefixo}-saude-sem-medicao`,
+      alarmDescription: "A checagem de saude dos dados nao rodou nas ultimas 2 h (agenda, Lambda do site ou banco)",
+      metric: metrica("PartidasSemSessao", "SampleCount"),
+      threshold: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+      evaluationPeriods: 2,
+      treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+    });
+    semMedicao.addAlarmAction(alertas);
+    semMedicao.addOkAction(alertas);
 
     new CfnOutput(this, "UrlDeTeste", { value: `https://${ambiente.dominioDeTeste}` });
     new CfnOutput(this, "AppUrl", { value: ambiente.appUrl });
