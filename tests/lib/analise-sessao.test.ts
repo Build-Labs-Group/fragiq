@@ -58,6 +58,17 @@ describe("avaliarResposta", () => {
     expect(avaliarResposta({ ...base, resposta: RESPOSTA_CERTA, incompleta: true }).estado).toBe("incompleta");
   });
 
+  it("prosa (o modelo às vezes ignora o formato) também é conferida: rounds e K/D", () => {
+    const certa = "Análise da sessão.\n\n**Situação Geral:**\n- **Período:** 30 rounds em 1 partida.\n- **K/D:** 1.50, acima do normal.\n\n→ Repita.";
+    const deOutra = "Análise da sessão.\n\n- **Período:** 22 rounds em 2 partidas.\n- **K/D:** 0.67.";
+    expect(avaliarResposta({ ...base, resposta: certa }).estado).toBe("ok");
+    expect(avaliarResposta({ ...base, resposta: deOutra })).toMatchObject({ estado: "outra-sessao", leitura: null });
+  });
+
+  it("uma linha só não é análise ('Resumo da nova sessão no modo Competitivo em Anubis')", () => {
+    expect(avaliarResposta({ ...base, resposta: "Resumo da nova sessão no modo Competitivo em Anubis, 05 de outubro." }).estado).toBe("ilegivel");
+  });
+
   it("ilegível não vira prosa", () => {
     expect(avaliarResposta({ ...base, resposta: '{"achados":[' }).estado).toBe("ilegivel");
   });

@@ -16,10 +16,12 @@ import { formatarNumero } from "./formato";
  *
  * - **Destaques**: até `MAX_DESTAQUES` contadores que se moveram de verdade
  *   na última sessão (`relevante`), que têm lado (`direcao` ≠ "nenhuma") e
- *   que fugiram do normal (chip fora do ruído), na ordem do impacto — os
- *   eventos a mais ou a menos que o normal previa. Cada um vira cartão com
- *   o número, o chip na cor certa, a régua contra o normal e a frase do
- *   impacto ("+6 a mais que o seu normal").
+ *   que fugiram do normal (chip fora do ruído), do maior desvio relativo
+ *   para o menor — o chip que a pessoa lê. Ordenar pelo impacto em
+ *   unidades punha dano e dinheiro sempre no topo (centenas de pontos de
+ *   vida contra meia dúzia de kills). Cada um vira cartão com o número, o
+ *   chip na cor certa, a régua contra o normal e a frase do impacto em
+ *   eventos ("+6 a mais que o seu normal").
  * - **Resto**: tudo que não é destaque, em ladrilhos de tamanho fixo numa
  *   grade com rolagem, na mesma ordem de camadas de `todasAsMetricas`
  *   (moveu e pesou, moveu pouco, não moveu). Os parados vão apagados.
@@ -65,8 +67,11 @@ export function separarMetricas(
   const todas = linhas.map((l) => metricaDaTela(l, roundsDaSessao));
   const congeladas = todas.filter((m) => m.grupo === GRUPO_CONGELADO);
   const vivas = todas.filter((m) => m.grupo !== GRUPO_CONGELADO);
-  // `todasAsMetricas` já ordena por camada e impacto: os primeiros destaques são os que mais pesaram.
-  const destaques = vivas.filter(ehDestaque).slice(0, MAX_DESTAQUES);
+  const desvio = (m: MetricaDaTela) => (m.delta.estado === "ok" ? Math.abs(m.delta.valor) : 0);
+  const destaques = vivas
+    .filter(ehDestaque)
+    .sort((a, b) => desvio(b) - desvio(a))
+    .slice(0, MAX_DESTAQUES);
   const ids = new Set(destaques.map((d) => d.key));
   return { destaques, resto: vivas.filter((m) => !ids.has(m.key)), congeladas };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { todasAsMetricas } from "@/lib/leituras";
 import { fraseDoImpacto, MAX_DESTAQUES, separarMetricas } from "@/lib/metricas-tela";
+import { direcaoDoContador } from "@/lib/direcao";
 import { normal, serie } from "./fixtures";
 
 /**
@@ -23,7 +24,7 @@ const linhas = todasAsMetricas(rows, chaves);
 const { destaques, resto, congeladas } = separarMetricas(linhas, 30);
 
 describe("separarMetricas", () => {
-  it("destaque é o que se moveu, tem lado e fugiu do normal — na ordem do impacto", () => {
+  it("destaque é o que se moveu, tem lado e fugiu do normal — do maior desvio para o menor", () => {
     expect(destaques.map((d) => d.key)).toEqual(["total_kills", "total_deaths"]);
     expect(destaques.length).toBeLessThanOrEqual(MAX_DESTAQUES);
   });
@@ -38,6 +39,12 @@ describe("separarMetricas", () => {
   it("volume (tiros) não é destaque e tem chip neutro", () => {
     const tiros = resto.find((m) => m.key === "total_shots_fired")!;
     expect(tiros.delta).toMatchObject({ valencia: "neutral" });
+  });
+
+  it("dinheiro, pontos do placar e acertos por arma não têm lado (eram o topo da aba em produção)", () => {
+    expect(direcaoDoContador("total_money_earned")).toBe("nenhuma");
+    expect(direcaoDoContador("total_contribution_score")).toBe("nenhuma");
+    expect(direcaoDoContador("total_hits_m4a1")).toBe("nenhuma");
   });
 
   it("contador parado vai para o fim da grade; última partida fica separada", () => {

@@ -525,8 +525,9 @@ Na tela (05/10/2026, `lib/metricas-tela.ts`), duas partes:
 
 1. **O que mais mudou** (`metricas-destaque.tsx`): até seis cartões com os
    contadores que se moveram de verdade na última sessão da lente
-   (`relevante`), que **têm lado** e cujo chip saiu do ruído, na ordem do
-   impacto. Anatomia do cartão de estatística (2.3): rótulo em português
+   (`relevante`), que **têm lado** e cujo chip saiu do ruído, do maior
+   desvio relativo para o menor (o chip que se lê; ordenar pelo impacto em
+   unidades punha dano e dinheiro sempre no topo). Anatomia do cartão de estatística (2.3): rótulo em português
    (`rotularMetrica`), número por round com chip, uma linha de referência
    (`vitalício` / `normal do modo` / `vitalício · modo sem base`), a
    régua, e no rodapé o impacto em eventos (`+13 a mais que o seu normal`)
@@ -538,8 +539,8 @@ Na tela (05/10/2026, `lib/metricas-tela.ts`), duas partes:
    ficam fora da grade, num `details`.
 
 **Direção por tabela** (`lib/direcao.ts`): kills, dano, vitórias, MVPs
-sobem; mortes descem; volume (rounds, tiros, partidas, janelas) e "última
-partida" não têm lado. Até 05/10 todo chip da aba era cinza; agora a cor
+sobem; mortes descem; volume (rounds, tiros, partidas, janelas, acertos por
+arma), dinheiro, pontos do placar e "última partida" não têm lado. Até 05/10 todo chip da aba era cinza; agora a cor
 diz se o movimento foi bom. Contador fora da tabela é "nenhuma" — chip
 cinza, nunca uma valência inventada. Volume não é destaque.
 
