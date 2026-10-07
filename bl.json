@@ -1,0 +1,22 @@
+{
+  "check": [
+    { "nome": "app-e-bot", "cmd": "npm run typecheck && npm run lint && npm test", "preparar": [{ "tipo": "npm" }, { "tipo": "npm", "cwd": "bot" }] },
+    { "nome": "infra-cdk", "cmd": "npm run verificar", "cwd": "infra", "preparar": [{ "tipo": "npm" }], "quando": ["infra", "bot", "src", "aws", "scripts/aws"] },
+    {
+      "nome": "build-aws",
+      "cmd": "npm run build:aws && test -x .aws/site/run.sh && test -f .aws/site/server.js && unzip -Z .aws/site.zip run.sh | grep -q '^-rwxr-xr-x' && du -sh .aws/site .aws/site.zip",
+      "preparar": [{ "tipo": "npm" }],
+      "quando": ["src", "public", "prisma", "next.config", "package", "scripts/aws"]
+    }
+  ],
+  "publicar": {
+    "cwd": "infra",
+    "previa": false,
+    "deployment": "producao",
+    "antes": [{ "nome": "pacote do site (build:aws)", "cmd": "npm run build:aws", "cwd": "." }],
+    "conferir": [
+      { "url": "https://fragiq.buildlabs.com.br/api/health", "status": [200] },
+      { "logs": ["/aws/lambda/fragiq-site"], "minutos": 10 }
+    ]
+  }
+}
