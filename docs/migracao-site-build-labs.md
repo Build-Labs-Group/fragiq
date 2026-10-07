@@ -326,6 +326,8 @@ virada, conferências e limpeza, e atualizar este documento, o
 
 ## 8. Resultado (02/10/2026, horários em UTC)
 
+> **Atualização de 07/10/2026:** a esteira de GitHub Actions descrita abaixo foi aposentada (ADR 0007). Hoje o site é publicado por `bl publicar` (perfil `buildlabs`); o histórico a seguir fica como registro.
+
 ### Esteira
 
 O `publicar` agora roda pelo `.github/workflows/publicar.yml` daqui, cópia

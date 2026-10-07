@@ -42,6 +42,16 @@ sobe o servidor e o Chrome juntos — no App Router os dois lados são o mesmo
 processo Next, então breakpoints em Server Components e no explorador
 funcionam na mesma sessão.
 
+## Verificar e publicar (local, sem GitHub Actions)
+
+O GitHub Actions foi removido em 07/10/2026 (ADR 0007 em `_buildlabs/decisoes/`).
+Os comandos ficam em `bl.json`:
+
+- `bl check`: typecheck, lint e testes do site e do bot, `infra/` (`npm run verificar`) e o pacote do site (`npm run build:aws`), só do que mudou.
+- `bl merge <PR>` depois de um `bl check` verde do mesmo commit.
+- `bl publicar`: monta o pacote (`build:aws`) e roda `cdk deploy` de `Fragiq-Prod` pelo perfil `buildlabs`, de uma worktree limpa da `main`. Grava o deployment `producao` no GitHub.
+- O bot continua indo pelo `bot/deploy.sh`.
+
 ## Como os dados entram
 
 **A Steam não tem webhooks para dados de jogador.** Os únicos webhooks do
