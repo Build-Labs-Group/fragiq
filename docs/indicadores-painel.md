@@ -8,7 +8,7 @@ duas peças, as duas do contrato do projeto `painel`
    indicadores. O painel lê pelo GitHub a cada coleta (30 min). A chave
    `local` não existe aqui; os comandos do `bl` ficam em `bl.json`.
 2. **`GET /api/buildlabs/indicadores`**: números agregados do produto e da
-   integridade dos dados, que o painel chama a cada 30 min.
+   integridade dos dados, que o painel chama no máximo a cada 60 min (`intervaloMinutos` do manifesto: o Neon está acima da cota de CU-h e cada chamada pode acordá-lo).
 
 O contrato vive no `painel`; este repositório não o copia. O teste
 `tests/lib/indicadores-painel.test.ts` replica o esquema zod só para provar

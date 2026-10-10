@@ -21,7 +21,7 @@
   ],
   "saude": { "url": "https://fragiq.buildlabs.com.br/favicon.ico" },
   "publicacao": { "ambiente": "producao" },
-  "indicadores": { "url": "https://fragiq.buildlabs.com.br/api/buildlabs/indicadores", "intervaloMinutos": 30 },
+  "indicadores": { "url": "https://fragiq.buildlabs.com.br/api/buildlabs/indicadores", "intervaloMinutos": 60 },
   "medicao": { "hostsCloudflare": ["fragiq.buildlabs.com.br", "fragiq-aws.buildlabs.com.br"], "neon": ["bold-credit-22972289"] },
   "fornecedores": [
     { "nome": "Neon", "plano": "Free", "usdMes": 0 },
