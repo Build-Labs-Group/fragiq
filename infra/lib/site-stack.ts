@@ -16,7 +16,7 @@ import { Trigger } from "aws-cdk-lib/triggers";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import type { Construct } from "constructs";
 import { PARAMETRO_DO_TOKEN } from "../lambdas/cloudflare/parametros.ts";
-import { type Ambiente, LAYER_DO_ADAPTADOR, tagsDaEmpresa, ZONA } from "./ambiente.ts";
+import { type Ambiente, LAYER_DO_ADAPTADOR, PARAMETRO_DE_INDICADORES, tagsDaEmpresa, ZONA } from "./ambiente.ts";
 
 export interface SiteProps extends StackProps {
   ambiente: Ambiente;
@@ -110,9 +110,22 @@ export class SiteStack extends Stack {
         FRAGIQ_ALVO: "aws",
         FRAGIQ_SECRET_PARAM: ambiente.parametro,
         APP_URL: ambiente.appUrl,
+        // O nome, não o valor: o site lê o token em tempo de execução (src/lib/indicadores-token.ts).
+        PARAMETRO_INDICADORES: PARAMETRO_DE_INDICADORES,
       },
     });
     site.addToRolePolicy(lerParametroDoSite);
+    // Indicadores do painel (ADR 0006): só a Lambda do site atende `/api/buildlabs/indicadores`.
+    site.addToRolePolicy(
+      new iam.PolicyStatement({
+        sid: "TokenDeIndicadores",
+        actions: ["ssm:GetParameter"],
+        // Token compartilhado de todos os projetos: nome exato, nunca o prefixo da infra-compartilhada (ADR 0005).
+        resources: [
+          this.formatArn({ service: "ssm", resource: "parameter", resourceName: PARAMETRO_DE_INDICADORES.slice(1) }),
+        ],
+      }),
+    );
 
     // ---- Migrações ------------------------------------------------------------
     const migracoes = new NodejsFunction(

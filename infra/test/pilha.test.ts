@@ -67,6 +67,7 @@ describe("Lambda do site", () => {
           FRAGIQ_ALVO: "aws",
           FRAGIQ_SECRET_PARAM: "/fragiq/prod/site",
           APP_URL: "https://fragiq-aws.buildlabs.com.br",
+          PARAMETRO_INDICADORES: "/infra-compartilhada/prod/indicadores-token",
         },
       },
     });
@@ -76,9 +77,20 @@ describe("Lambda do site", () => {
     }
   });
 
-  it("as roles leem só o parâmetro do site e o token da Cloudflare, por nome exato", () => {
+  it("as roles leem só o parâmetro do site, o token da Cloudflare e o de indicadores, por nome exato", () => {
     const caminhos = [...politicas(antes.t).matchAll(/:parameter\/([^"]+)"/g)].map((m) => m[1]);
-    expect(new Set(caminhos)).toEqual(new Set(["fragiq/prod/site", "infra-compartilhada/prod/cloudflare-api-token"]));
+    expect(new Set(caminhos)).toEqual(
+      new Set([
+        "fragiq/prod/site",
+        "infra-compartilhada/prod/cloudflare-api-token",
+        "infra-compartilhada/prod/indicadores-token",
+      ]),
+    );
+    // Só a Lambda do site atende a rota: a agenda e as migrações não leem o token.
+    const comToken = Object.values(antes.t.findResources("AWS::IAM::Policy")).filter((p) =>
+      JSON.stringify(p).includes("indicadores-token"),
+    );
+    expect(comToken).toHaveLength(1);
     expect(politicas(antes.t)).not.toContain("secretsmanager");
   });
 });

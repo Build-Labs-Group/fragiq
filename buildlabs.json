@@ -1,0 +1,30 @@
+{
+  "versao": 1,
+  "slug": "fragiq",
+  "nome": "FragIQ",
+  "descricao": "Acompanhamento temporal de estatísticas de jogos com login via Steam: guarda a série inteira que a Steam não guarda. O bot de presença na Steam roda no host compartilhado da Build Labs.",
+  "links": [
+    { "tipo": "producao", "url": "https://fragiq.buildlabs.com.br" },
+    { "tipo": "admin", "url": "https://fragiq.buildlabs.com.br/admin", "rotulo": "Admin" },
+    {
+      "tipo": "logs",
+      "url": "https://us-east-2.console.aws.amazon.com/cloudwatch/home?region=us-east-2#logsV2:log-groups/log-group/$252Faws$252Flambda$252Ffragiq-site",
+      "rotulo": "Logs do site"
+    },
+    {
+      "tipo": "console",
+      "url": "https://us-east-2.console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks?filteringText=Fragiq-Prod",
+      "rotulo": "Pilha Fragiq-Prod"
+    },
+    { "tipo": "banco", "url": "https://console.neon.tech/app/projects/bold-credit-22972289", "rotulo": "Banco (Neon)" },
+    { "tipo": "repositorio", "url": "https://github.com/Build-Labs-Group/fragiq" }
+  ],
+  "saude": { "url": "https://fragiq.buildlabs.com.br/favicon.ico" },
+  "publicacao": { "ambiente": "producao" },
+  "indicadores": { "url": "https://fragiq.buildlabs.com.br/api/buildlabs/indicadores", "intervaloMinutos": 30 },
+  "medicao": { "hostsCloudflare": ["fragiq.buildlabs.com.br", "fragiq-aws.buildlabs.com.br"], "neon": ["bold-credit-22972289"] },
+  "fornecedores": [
+    { "nome": "Neon", "plano": "Free", "usdMes": 0 },
+    { "nome": "Cloudflare", "plano": "Free", "usdMes": 0, "observacao": "DNS e proxy do domínio" }
+  ]
+}

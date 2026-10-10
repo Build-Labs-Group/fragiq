@@ -406,6 +406,13 @@ leitura dentro de uma requisição (`src/lib/segredos.ts`; não no boot — o
 token OIDC é um header da requisição). O que precisa ficar na
 Vercel, e o passo a passo da AWS, estão em [docs/segredos.md](docs/segredos.md).
 
+## Painel da Build Labs
+
+O FragIQ publica `buildlabs.json` (links, saúde, publicação) e o endpoint
+`GET /api/buildlabs/indicadores` (Bearer; integridade dos dados, pendências,
+bot e uso, só agregados) para o painel da empresa. O que cada número significa
+e como o token chega: [docs/indicadores-painel.md](docs/indicadores-painel.md).
+
 ## Saída da Vercel
 
 O site está indo para a conta AWS da Build Labs (Lambda + HTTP API, domínio
