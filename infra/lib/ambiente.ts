@@ -11,6 +11,9 @@ export const CONTA = "576951332499";
 export const REGIAO = "us-east-2";
 export const ZONA = "buildlabs.com.br";
 
+/** Token compartilhado do endpoint de indicadores do painel (SecureString, ADR 0005/0006). */
+export const PARAMETRO_DE_INDICADORES = "/infra-compartilhada/prod/indicadores-token";
+
 /** Lambda Web Adapter 0.9.1 (layer pública da AWS, conta 753240598075), arm64. */
 export const LAYER_DO_ADAPTADOR = `arn:aws:lambda:${REGIAO}:753240598075:layer:LambdaAdapterLayerArm64:25`;
 
