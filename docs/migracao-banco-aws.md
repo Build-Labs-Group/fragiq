@@ -1,7 +1,8 @@
 # Banco do FragIQ: Neon → Postgres da Build Labs (InfraBancos)
 
-> **Situação:** em andamento (11/10/2026). O resultado da virada entra na
-> parte 6 deste documento quando ela acontecer.
+> **Situação:** virada feita em 11/10/2026 (parte 6). O site e o bot do
+> FragIQ leem e gravam no Postgres da Build Labs; o Neon ficou intacto,
+> sem escrita, como volta por 30 dias (parte 5).
 
 Decisão do Murilo (10/10/2026): todos os bancos saem do Neon para o Postgres
 próprio da Build Labs na AWS, com zero perda de linha. O do FragIQ é o Neon
@@ -140,8 +141,11 @@ todas as tabelas. A conferência acusou só falsos positivos de **versão** (Neo
 cada NOT NULL como restrição (218 a mais; a nulidade já é comparada nas
 colunas) e o restore renumera as colunas sem os buracos de colunas apagadas
 (a posição agora é a ordem relativa). Coberto por teste em
-`tests/integracao/banco-pg18.test.ts`. Falta repetir o ensaio com o
-`conferir` corrigido: tem que dar zero diferença.
+`tests/integracao/banco-pg18.test.ts`. Repetido com o `conferir` corrigido (16:12 UTC): **zero diferença**
+(28 tabelas, dados e metadados), restauração em 4 s, e o caminho do site
+até o pgbouncer (TLS contra a CA, 20 consultas com parâmetro em paralelo,
+transação na mesma conexão) ok. O `fragiq_ensaio` e o prefixo
+`conns/fragiq-ensaio-*` do bucket de backup foram apagados.
 
 ## 5. Volta
 
@@ -164,4 +168,24 @@ as Lambdas da VPC: `REDE_DE_BANCOS = false` e `bl publicar`.
 
 ## 6. Resultado
 
-(Preenchido depois da janela.)
+Virada em 11/10/2026 (UTC), pelo SSM no host compartilhado:
+
+| Hora | Passo |
+|---|---|
+| ~16:20 | `bl merge 33` e `bl publicar`: Lambdas na VPC dos bancos, ainda no Neon (health 200, migrações "0 aplicadas, 40 já estavam" pela NAT) |
+| 16:24 | agendas `fragiq-coleta-diaria` e `fragiq-saude-dos-dados` desligadas |
+| 16:25 | `fragiq-bot` parado; concorrência reservada 0 na `fragiq-site` |
+| 16:25:48 | `pg_dump` do Neon (7,2 MB, sha256 `06d8627c...`), `pg_restore` no servidor em 4 s |
+| 16:25:55 | conferência Neon × servidor: **28 tabelas com mesma contagem e mesmo checksum, metadados iguais** (ex.: `bot_logs` 8.699, `match_players` 1.620, `users` 4) |
+| 16:26 | `/fragiq/prod/site` **v4**, `reler-parametro.mjs`, concorrência de volta, health 200 |
+| 16:27 | `fragiq-bot` religado; agendas ligadas |
+
+O dump da virada ficou em `s3://buildlabs-bancos-backup-576951332499/bancos/fragiq/virada-20261011T1625Z/`
+(com o relatório da conferência). Bot parado por ~90 s, site fora por ~55 s
+(cogniflow reenvia pela DLQ o que tiver falhado).
+
+Provas depois: `/api/health` 200 (latência do banco 5 a 16 ms), página inicial
+200, `/api/buildlabs/indicadores` 401 sem token, `bot_status.ultimoTickEm` e
+`bot_logs` avançando no servidor (8.699 → 8.703 em 90 s), logs da
+`fragiq-site` sem ERROR, alarmes `fragiq-*` em OK. O Neon não recebeu
+escrita depois do dump (bot e site parados antes dele). Fica 30 dias.
