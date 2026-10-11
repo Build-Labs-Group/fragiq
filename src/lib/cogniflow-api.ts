@@ -45,7 +45,7 @@ const TIMEOUT_MS = 20_000;
 export async function invocar<T>(
   capability: string,
   input: Record<string, unknown>,
-  opcoes: { idempotencyKey?: string } = {},
+  opcoes: { idempotencyKey?: string; timeoutMs?: number } = {},
 ): Promise<T> {
   const config = await cogniflowApi();
   const body = JSON.stringify({ input, idempotency_key: opcoes.idempotencyKey });
@@ -62,7 +62,7 @@ export async function invocar<T>(
       },
       body,
       cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(opcoes.timeoutMs ?? TIMEOUT_MS),
     });
   } catch (err) {
     throw new CogniflowApiError(capability, 0, null, err instanceof Error ? err.message : String(err));

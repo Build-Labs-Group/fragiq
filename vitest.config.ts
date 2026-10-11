@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
  * por curl assinado, como descreve docs/cogniflow-tenant.md.
  */
 export default defineConfig({
+  // Componentes (.tsx) renderizados em teste usam o JSX automático do Next.
+  esbuild: { jsx: "automatic" },
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",

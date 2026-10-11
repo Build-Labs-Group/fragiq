@@ -677,6 +677,15 @@ Três portas, três lugares, sem repetição:
 | `bot` (sessão sem modo/mapa) | linha de cobertura sob as abas, chip `modo? ▾` no hero e em Sessões | inline e factual — é estado, não aviso; não tem "dispensar" |
 | `partidas` (corrente do share code) | aba Partidas e um passo do onboarding | convite, só ali |
 
+**Leitura atrasada** (`aviso-atraso.tsx`): quando o cogniflow não responde
+(503, timeout, rede) a página pública (`/p/<id>` e a comparação) faz uma nova
+tentativa curta e, se falhar, mostra o último dado guardado no banco com a
+hora da coleta e a frase "Atualização atrasada, tentando de novo". É inline,
+em `warn`, junto do nome; sem jargão e sem esconder nada. Quem nunca entrou
+no FragIQ não tem dado guardado: aparece "Não deu para ler agora". A falha vai
+para o log em nível warn e para o diário como `perfil.leitura_atrasada`
+(contável por dia). Teste: `tests/lib/perfil-degradado.test.ts`.
+
 Não existe banner de pendências repetido em todas as abas. Um aviso `warn`
 em seis telas, dispensável por sete dias, irritava quem já decidiu não
 adicionar o bot e não ajudava quem queria — a informação chegava longe do

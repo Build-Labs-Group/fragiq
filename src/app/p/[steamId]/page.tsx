@@ -8,6 +8,7 @@ import { PartidasTabela } from "@/components/partidas-tabela";
 import { PartidasAgregado } from "@/components/partidas-agregado";
 import { carregarPerfilPublico, pareceSteamId, resolverEntrada } from "@/lib/perfil-publico";
 import { SteamMark } from "@/components/steam-mark";
+import { AvisoAtraso } from "@/components/aviso-atraso";
 import { Selo } from "@/components/selo";
 import { SeguirBotao } from "@/components/seguir-botao";
 import { StatPanel } from "@/components/stat-panel";
@@ -181,6 +182,9 @@ export default async function PerfilPublicoPage({
       <main className="mx-auto max-w-6xl px-6 py-10">
         {perfil.estado === "oculto" && <Estado titulo="Perfil oculto" texto="Esta pessoa escolheu não ter página pública no FragIQ." />}
         {perfil.estado === "inexistente" && <Estado titulo="Perfil não encontrado" texto="A Steam não conhece esse SteamID." />}
+        {perfil.estado === "indisponivel" && (
+          <Estado titulo="Não deu para ler agora" texto="A Steam não respondeu e ainda não temos dados guardados desta pessoa. Tente de novo em instantes." />
+        )}
         {jogador && (
           <>
             <section className="flex flex-wrap items-center gap-5">
@@ -212,6 +216,7 @@ export default async function PerfilPublicoPage({
                     </>
                   )}
                 </p>
+                {perfil.estado === "ok" && perfil.atualizadoEm && <AvisoAtraso em={perfil.atualizadoEm} />}
                 {perfil.estado !== "ok" && (
                   <p className="mt-1 text-xs text-ink-faint">
                     {perfil.estado === "privado"

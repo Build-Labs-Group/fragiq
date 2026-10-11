@@ -33,9 +33,9 @@ export class SteamApiError extends Error {
  * coleta sai de IPs compartilhados da Vercel, e um 429 da Steam bem antes
  * da cota diária é plausível; sem o registro ele seria só "o sync falhou".
  */
-async function capability<T>(id: string, input: Record<string, unknown>): Promise<T> {
+async function capability<T>(id: string, input: Record<string, unknown>, opcoes: { timeoutMs?: number } = {}): Promise<T> {
   try {
-    return await invocar<T>(id, input);
+    return await invocar<T>(id, input, opcoes);
   } catch (err) {
     if (err instanceof CogniflowApiError) {
       await registrar("steam.recusa", {
@@ -79,8 +79,9 @@ function jogador(p: Jogador): SteamPlayer {
   };
 }
 
-export async function getPlayerSummary(steamId: string): Promise<SteamPlayer | null> {
-  const { players } = await capability<{ players: Jogador[] }>("steam.player.read", { steam_ids: [steamId] });
+/** `timeoutMs` encurta a espera de quem monta uma tela e tem o que mostrar se a leitura falhar. */
+export async function getPlayerSummary(steamId: string, opcoes: { timeoutMs?: number } = {}): Promise<SteamPlayer | null> {
+  const { players } = await capability<{ players: Jogador[] }>("steam.player.read", { steam_ids: [steamId] }, opcoes);
   return players[0] ? jogador(players[0]) : null;
 }
 
@@ -141,10 +142,14 @@ export type GameStats = {
  * ou o perfil está privado — o cogniflow já traduz o 400 da Steam para
  * `stats: null`, e um sync de centenas de jogos não pode morrer por isso.
  */
-export async function getUserStatsForGame(steamId: string, appId: number): Promise<GameStats | null> {
+export async function getUserStatsForGame(
+  steamId: string,
+  appId: number,
+  opcoes: { timeoutMs?: number } = {},
+): Promise<GameStats | null> {
   const { stats } = await capability<{
     stats: { metrics: Record<string, number>; achievements_unlocked: number | null; achievements_total: number | null } | null;
-  }>("steam.stats.read", { steam_id: steamId, app_id: appId });
+  }>("steam.stats.read", { steam_id: steamId, app_id: appId }, opcoes);
   if (!stats) return null;
   return {
     metrics: stats.metrics,

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AvisoAtraso } from "@/components/aviso-atraso";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { comparar, type Linha } from "@/lib/comparar";
@@ -36,6 +37,10 @@ export default async function ComparacaoPage({ params }: { params: Promise<{ ste
               <span className="hud text-accent">vs</span>
               <Jogador nome={c.b.jogador.personaname} avatar={c.b.jogador.avatarfull} href={`/p/${outro}`} horas={c.b.horas} lado="b" />
             </div>
+
+            {(c.a.atualizadoEm || c.b.atualizadoEm) && (
+              <AvisoAtraso em={(c.a.atualizadoEm ?? c.b.atualizadoEm)!} className="mt-3 text-center text-xs text-warn" />
+            )}
 
             <Bloco titulo="Vitalício" linhas={c.resumo} />
             {c.armas.length > 0 && <Bloco titulo="Armas em comum" linhas={c.armas} />}
