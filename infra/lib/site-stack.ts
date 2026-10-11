@@ -1,10 +1,11 @@
 import { fileURLToPath } from "node:url";
-import { CfnOutput, CustomResource, Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
+import { CfnOutput, CustomResource, Duration, Fn, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
 import { ApiMapping, DomainName, HttpApi, HttpStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import { SnsAction } from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction, type NodejsFunctionProps, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -16,7 +17,7 @@ import { Trigger } from "aws-cdk-lib/triggers";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import type { Construct } from "constructs";
 import { PARAMETRO_DO_TOKEN } from "../lambdas/cloudflare/parametros.ts";
-import { type Ambiente, LAYER_DO_ADAPTADOR, PARAMETRO_DE_INDICADORES, tagsDaEmpresa, ZONA } from "./ambiente.ts";
+import { type Ambiente, LAYER_DO_ADAPTADOR, PARAMETRO_DE_INDICADORES, REGIAO, tagsDaEmpresa, ZONA } from "./ambiente.ts";
 
 export interface SiteProps extends StackProps {
   ambiente: Ambiente;
@@ -72,6 +73,29 @@ export class SiteStack extends Stack {
         removalPolicy: RemovalPolicy.DESTROY,
       });
 
+    // Rede dos bancos (InfraBancos): subnets privadas com saída pela NAT instance e o grupo que
+    // alcança o pgbouncer (6432). Só as Lambdas que falam com o banco entram; a agenda e a
+    // Cloudflare não precisam (a agenda só chama a Lambda do site e lê o SSM).
+    let redeImportada: Partial<lambda.FunctionOptions> | undefined;
+    const rede = (): Partial<lambda.FunctionOptions> => {
+      if (!ambiente.redeDeBancos) return {};
+      if (redeImportada) return redeImportada;
+      const vpc = ec2.Vpc.fromVpcAttributes(this, "VpcDosBancos", {
+        vpcId: Fn.importValue("infra-bancos-vpc-id"),
+        availabilityZones: [`${REGIAO}a`, `${REGIAO}b`],
+        privateSubnetIds: Fn.split(",", Fn.importValue("infra-bancos-lambda-subnet-ids"), 2),
+      });
+      return (redeImportada = {
+        vpc,
+        vpcSubnets: { subnets: vpc.privateSubnets },
+        securityGroups: [
+          ec2.SecurityGroup.fromSecurityGroupId(this, "GrupoDasLambdasDosBancos", Fn.importValue("infra-bancos-lambda-sg-id"), {
+            mutable: false,
+          }),
+        ],
+      });
+    };
+
     const base = (nome: string, extra: Partial<NodejsFunctionProps>): NodejsFunctionProps => ({
       functionName: `${prefixo}-${nome}`,
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -102,6 +126,7 @@ export class SiteStack extends Stack {
       // A rota do cron declara 300 s (maxDuration); pela HTTP API o corte é 30 s, pela agenda não.
       timeout: Duration.seconds(300),
       logGroup: logDe("site"),
+      ...rede(),
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: "/opt/bootstrap",
         AWS_LWA_PORT: "8080",
@@ -112,6 +137,8 @@ export class SiteStack extends Stack {
         APP_URL: ambiente.appUrl,
         // O nome, não o valor: o site lê o token em tempo de execução (src/lib/indicadores-token.ts).
         PARAMETRO_INDICADORES: PARAMETRO_DE_INDICADORES,
+        // Atrás do pgbouncer (transaction) cada Lambda precisa de poucas conexões; o pool padrão do pg é 10.
+        ...(ambiente.redeDeBancos ? { DATABASE_POOL_MAX: "5" } : {}),
       },
     });
     site.addToRolePolicy(lerParametroDoSite);
@@ -138,6 +165,7 @@ export class SiteStack extends Stack {
         memorySize: 256,
         timeout: Duration.minutes(10),
         environment: { FRAGIQ_SECRET_PARAM: ambiente.parametro },
+        ...rede(),
         bundling: {
           commandHooks: {
             beforeBundling: () => [],

@@ -38,8 +38,15 @@ export function lerUrl(argumentos: string[], nome: "--origem" | "--destino"): st
 /** Só o host, para o log dizer de onde para onde sem mostrar usuário nem senha. */
 export const hostDe = (url: string) => new URL(url).hostname;
 
-async function conectar(url: string) {
-  const c = new pg.Client(poolConfigDe(url));
+/** `--ca <arquivo>`: certificado da CA do Postgres da Build Labs (`/bancos/prod/tls/ca-cert`), só para o destino. */
+export function lerCa(argumentos: string[]): string | undefined {
+  const i = argumentos.indexOf("--ca");
+  const arquivo = i >= 0 ? argumentos[i + 1] : undefined;
+  return arquivo ? readFileSync(arquivo, "utf8") : undefined;
+}
+
+async function conectar(url: string, ca?: string) {
+  const c = new pg.Client(poolConfigDe(url, { ca }));
   await c.connect();
   for (const sql of SESSAO_ESTAVEL) await c.query(sql);
   return c;
@@ -52,7 +59,7 @@ async function principal(argumentos: string[]) {
   console.log(`origem ${hostDe(urlOrigem)} → destino ${hostDe(urlDestino)}${gravar ? "" : " (ensaio)"}`);
 
   const origem = await conectar(urlOrigem);
-  const destino = await conectar(urlDestino);
+  const destino = await conectar(urlDestino, lerCa(argumentos));
   try {
     const [fotoOrigem, fotoDestino] = await Promise.all([fotografar(origem), fotografar(destino)]);
     const tabelas = Object.keys(fotoOrigem.tabelas);

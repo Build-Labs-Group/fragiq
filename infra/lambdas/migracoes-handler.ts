@@ -7,7 +7,7 @@ import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import pg from "pg";
-import { poolConfigDe } from "../../src/lib/pg-config";
+import { opcoesDoAmbiente, poolConfigDe } from "../../src/lib/pg-config";
 import { type Migracao, migrar } from "./migracoes.ts";
 
 function lerMigracoes(pasta: string): Migracao[] {
@@ -21,13 +21,16 @@ export async function handler() {
   const r = await new SSMClient({}).send(new GetParameterCommand({ Name: nome, WithDecryption: true }));
   const valores = JSON.parse(r.Parameter?.Value ?? "{}") as Record<string, string | undefined>;
   // Migração por pooler trava (o Prisma usa advisory lock): a URL direta primeiro, como no prisma.config.ts.
-  const url = valores.DIRECT_DATABASE_URL?.trim() || valores.DATABASE_URL?.trim();
+  // No Postgres da Build Labs (InfraBancos) a Lambda só alcança o pgbouncer (6432), e o parâmetro do site
+  // não leva DIRECT_DATABASE_URL: aí vale DATABASE_URL, sem a trava de sessão (veja `migrar`).
+  const direta = valores.DIRECT_DATABASE_URL?.trim();
+  const url = direta || valores.DATABASE_URL?.trim();
   if (!url) throw new Error(`${nome} não tem DIRECT_DATABASE_URL nem DATABASE_URL`);
-
-  const cliente = new pg.Client(poolConfigDe(url));
+  // A CA do servidor próprio vem do mesmo parâmetro (DATABASE_SSL_CA, certificado público).
+  const cliente = new pg.Client(poolConfigDe(url, opcoesDoAmbiente({ DATABASE_SSL_CA: valores.DATABASE_SSL_CA })));
   await cliente.connect();
   try {
-    return await migrar(cliente, lerMigracoes(join(import.meta.dirname, "migrations")));
+    return await migrar(cliente, lerMigracoes(join(import.meta.dirname, "migrations")), console.log, { travar: Boolean(direta) });
   } finally {
     await cliente.end();
   }

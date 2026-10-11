@@ -26,6 +26,18 @@ export const LAYER_DO_ADAPTADOR = `arn:aws:lambda:${REGIAO}:753240598075:layer:L
  */
 export const VIRADA_FEITA = true;
 
+/**
+ * O site e a Lambda de migrações entram na VPC dos bancos (pilha `InfraBancos`
+ * da infra-compartilhada, docs/bancos-postgres.md) e passam a sair para a
+ * internet pela NAT instance dela: é o único caminho até o pgbouncer do
+ * Postgres da Build Labs (10.42.2.10:6432). A importação por nome
+ * (`infra-bancos-*`) prende a pilha `InfraBancos`: ela não troca nem apaga
+ * esses exports enquanto esta pilha os usar. Pela NAT o site também alcança
+ * o Neon, então a rede entra antes da troca do banco
+ * (docs/migracao-banco-aws.md). `false` tira as Lambdas da VPC.
+ */
+export const REDE_DE_BANCOS = true;
+
 export interface Ambiente {
   nome: "prod";
   pilha: string;
@@ -40,6 +52,8 @@ export interface Ambiente {
   /** Parâmetro SecureString com o JSON de segredos e configuração (ADR 0005). */
   parametro: string;
   agendaLigada: boolean;
+  /** Lambdas do site e das migrações na VPC dos bancos (ver `REDE_DE_BANCOS`). */
+  redeDeBancos: boolean;
   /**
    * Tópico SNS que recebe os alarmes de saúde dos dados. É o de alertas da
    * empresa, hoje criado pela pilha do cogniflow (`cogniflow-alertas`, com o
@@ -49,7 +63,7 @@ export interface Ambiente {
   topicoDeAlertas: string;
 }
 
-export function lerAmbiente(nome: unknown, virada = VIRADA_FEITA): Ambiente {
+export function lerAmbiente(nome: unknown, virada = VIRADA_FEITA, redeDeBancos = REDE_DE_BANCOS): Ambiente {
   const valor = typeof nome === "string" && nome ? nome : "prod";
   if (valor !== "prod") {
     throw new Error(`ambiente inválido: ${valor}. O site do FragIQ só tem produção (prévia leria o banco de produção).`);
@@ -65,6 +79,7 @@ export function lerAmbiente(nome: unknown, virada = VIRADA_FEITA): Ambiente {
     appUrl: `https://${virada ? dominioPrincipal : dominioDeTeste}`,
     parametro: "/fragiq/prod/site",
     agendaLigada: virada,
+    redeDeBancos,
     topicoDeAlertas: `arn:aws:sns:${REGIAO}:${CONTA}:cogniflow-alertas`,
   };
 }
