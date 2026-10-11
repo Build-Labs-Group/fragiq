@@ -73,6 +73,7 @@ function descrever(p: PerfilPublico) {
   switch (p.estado) {
     case "oculto": return "oculto no FragIQ";
     case "inexistente": return "inexistente";
+    case "indisponivel": return "sem resposta da Steam agora, tente de novo em instantes";
     case "privado": return "privado na Steam";
     case "sem-cs2": return "sem estatísticas de CS2";
     default: return "indisponível";

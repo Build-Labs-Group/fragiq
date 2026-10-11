@@ -1,4 +1,6 @@
 import { prisma } from "./prisma";
+import { CogniflowApiError } from "./cogniflow-api";
+import { registrar } from "./eventos";
 import { getPlayerSummary, getUserStatsForGame, resolveVanityUrl, type SteamPlayer } from "./steam/api";
 import { armasNasMetricas, rotularArma, rotularMapa } from "./cs2-labels";
 
@@ -21,6 +23,8 @@ const CACHE_MS = 10 * 60_000;
 export type PerfilPublico =
   | { estado: "oculto" }
   | { estado: "inexistente" }
+  /** A Steam (via cogniflow) não respondeu e não há dado guardado desta pessoa. Passageiro. */
+  | { estado: "indisponivel" }
   | { estado: "privado"; jogador: SteamPlayer }
   | { estado: "sem-cs2"; jogador: SteamPlayer }
   | {
@@ -32,9 +36,11 @@ export type PerfilPublico =
       /** `id` é o nome da Valve (`ak47`, `de_nuke`), que acha o ícone; o outro campo é o rótulo. */
       armas: { id: string; arma: string; kills: number; tiros: number; acertos: number; precisao: number | null }[];
       mapas: { id: string; mapa: string; rounds: number; vitorias: number; taxa: number | null }[];
+      /** Presente só quando a leitura ao vivo falhou: os números são os da última coleta, feita nesta hora. */
+      atualizadoEm?: Date;
     };
 
-const cache = new Map<string, { em: number; valor: PerfilPublico }>();
+const cache = new Map<string, { expira: number; valor: PerfilPublico }>();
 
 export function pareceSteamId(v: string) {
   return /^7656119\d{10}$/.test(v);
@@ -57,11 +63,97 @@ export async function resolverEntrada(entrada: string): Promise<string | null> {
 
 export async function carregarPerfilPublico(steamId: string): Promise<PerfilPublico> {
   const hit = cache.get(steamId);
-  if (hit && Date.now() - hit.em < CACHE_MS) return hit.valor;
+  if (hit && Date.now() < hit.expira) return hit.valor;
 
   const valor = await montar(steamId);
-  cache.set(steamId, { em: Date.now(), valor });
+  const degradado = valor.estado === "indisponivel" || (valor.estado === "ok" && valor.atualizadoEm !== undefined);
+  cache.set(steamId, { expira: Date.now() + (degradado ? CACHE_ATRASADO_MS : CACHE_MS), valor });
   return valor;
+}
+
+const TIMEOUT_LEITURA_MS = 6_000;
+const ESPERA_RETENTATIVA_MS = 300;
+/** Quanto uma resposta degradada fica em cache: pouco, para a próxima visita já tentar de novo. */
+const CACHE_ATRASADO_MS = 30_000;
+
+type Guardado = {
+  jogador: SteamPlayer;
+  metrics: Record<string, number>;
+  capturadoEm: Date;
+};
+
+/**
+ * Uma leitura ao cogniflow com uma nova tentativa curta, só para o que vale
+ * repetir (503, 429, timeout, rede). Recusa permanente sobe de primeira.
+ */
+async function lerComRetentativa<T>(ler: () => Promise<T>): Promise<T> {
+  try {
+    return await ler();
+  } catch (err) {
+    if (err instanceof CogniflowApiError && err.permanente) throw err;
+    await new Promise((r) => setTimeout(r, ESPERA_RETENTATIVA_MS));
+    return ler();
+  }
+}
+
+/** Nível warn, e uma linha no diário para contar quantas vezes a tela serviu dado guardado. */
+async function avisarAtraso(
+  steamId: string,
+  capability: string,
+  err: unknown,
+  guardado: boolean,
+) {
+  const mensagem = err instanceof Error ? err.message : String(err);
+  console.warn(
+    `[perfil.publico] leitura atrasada (${capability}), ${guardado ? "mostrando o último dado guardado" : "sem dado guardado"}:`,
+    mensagem,
+  );
+  await registrar("perfil.leitura_atrasada", {
+    dados: {
+      capability,
+      steamId,
+      comDadoGuardado: guardado,
+      mensagem: mensagem.slice(0, 300),
+    },
+  });
+}
+
+/** O último dado que o FragIQ já coletou desta pessoa, ou null se ela nunca entrou. */
+async function lerGuardado(steamId: string): Promise<Guardado | null> {
+  const u = await prisma.user.findUnique({
+    where: { steamId },
+    select: {
+      personaName: true,
+      avatarUrl: true,
+      profileUrl: true,
+      countryCode: true,
+      games: {
+        where: { gameAppId: CS2 },
+        select: {
+          snapshots: {
+            orderBy: { capturedAt: "desc" },
+            take: 1,
+            select: { metrics: true, capturedAt: true },
+          },
+        },
+      },
+    },
+  });
+  const ultimo = u?.games[0]?.snapshots[0];
+  if (!u || !ultimo) return null;
+  return {
+    // Se há snapshot, as estatísticas eram legíveis na última coleta: o perfil era público.
+    jogador: {
+      steamid: steamId,
+      personaname: u.personaName,
+      avatarfull: u.avatarUrl ?? undefined,
+      profileurl: u.profileUrl ?? undefined,
+      loccountrycode: u.countryCode ?? undefined,
+      communityvisibilitystate: 3,
+    },
+    metrics: ultimo.metrics as Record<string, number>,
+    capturadoEm: ultimo.capturedAt,
+  };
 }
 
 async function montar(steamId: string): Promise<PerfilPublico> {
@@ -70,21 +162,75 @@ async function montar(steamId: string): Promise<PerfilPublico> {
     select: {
       perfilPublico: true,
       createdAt: true,
-      games: { where: { gameAppId: CS2 }, select: { _count: { select: { snapshots: true } } } },
+      games: {
+        where: { gameAppId: CS2 },
+        select: { _count: { select: { snapshots: true } } },
+      },
     },
   });
   if (usuario && !usuario.perfilPublico) return { estado: "oculto" };
+  const usuarioDoFragiq = usuario
+    ? {
+        desde: usuario.createdAt,
+        coletas: usuario.games[0]?._count.snapshots ?? 0,
+      }
+    : null;
 
-  const jogador = await getPlayerSummary(steamId);
+  let jogador: SteamPlayer | null;
+  try {
+    jogador = await lerComRetentativa(() =>
+      getPlayerSummary(steamId, { timeoutMs: TIMEOUT_LEITURA_MS }),
+    );
+  } catch (err) {
+    // Cogniflow fora, timeout ou recusa: a tela não cai. Mostra o último
+    // dado que já guardamos, com a hora dele, ou diz que não deu para ler.
+    const guardado = await lerGuardado(steamId);
+    await avisarAtraso(steamId, "steam.player.read", err, guardado !== null);
+    if (!guardado) return { estado: "indisponivel" };
+    return {
+      ...corpo(guardado.jogador, guardado.metrics, usuarioDoFragiq),
+      atualizadoEm: guardado.capturadoEm,
+    };
+  }
   if (!jogador) return { estado: "inexistente" };
-  if (jogador.communityvisibilitystate !== 3) return { estado: "privado", jogador };
+  if (jogador.communityvisibilitystate !== 3)
+    return { estado: "privado", jogador };
 
-  const stats = await getUserStatsForGame(steamId, CS2);
+  let stats: Awaited<ReturnType<typeof getUserStatsForGame>>;
+  try {
+    stats = await lerComRetentativa(() =>
+      getUserStatsForGame(steamId, CS2, { timeoutMs: TIMEOUT_LEITURA_MS }),
+    );
+  } catch (err) {
+    const guardado = await lerGuardado(steamId);
+    await avisarAtraso(steamId, "steam.stats.read", err, guardado !== null);
+    if (!guardado) return { estado: "indisponivel" };
+    return {
+      ...corpo(jogador, guardado.metrics, usuarioDoFragiq),
+      atualizadoEm: guardado.capturadoEm,
+    };
+  }
   if (!stats) return { estado: "sem-cs2", jogador };
-  const m = stats.metrics;
-  const razao = (a: string, b: string, escala = 1) => (m[b] ? ((m[a] ?? 0) / m[b]) * escala : null);
+  return corpo(jogador, stats.metrics, usuarioDoFragiq);
+}
+
+type Ok = Extract<PerfilPublico, { estado: "ok" }>;
+
+/** Os números da página a partir das métricas (ao vivo ou guardadas): a mesma conta nos dois casos. */
+function corpo(
+  jogador: SteamPlayer,
+  m: Record<string, number>,
+  usuarioDoFragiq: Ok["usuarioDoFragiq"],
+): Ok {
+  const razao = (a: string, b: string, escala = 1) =>
+    m[b] ? ((m[a] ?? 0) / m[b]) * escala : null;
   const fmt = (v: number | null, casas: number, sufixo = "") =>
-    v === null ? "—" : v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas }) + sufixo;
+    v === null
+      ? "—"
+      : v.toLocaleString("pt-BR", {
+          minimumFractionDigits: casas,
+          maximumFractionDigits: casas,
+        }) + sufixo;
 
   const armas = armasNasMetricas(m)
     .map((arma) => {
@@ -116,9 +262,7 @@ async function montar(steamId: string): Promise<PerfilPublico> {
   return {
     estado: "ok",
     jogador,
-    usuarioDoFragiq: usuario
-      ? { desde: usuario.createdAt, coletas: usuario.games[0]?._count.snapshots ?? 0 }
-      : null,
+    usuarioDoFragiq,
     horas: Math.round((m.total_time_played ?? 0) / 3600),
     resumo: [
       { rotulo: "K/D", valor: fmt(razao("total_kills", "total_deaths"), 2) },
