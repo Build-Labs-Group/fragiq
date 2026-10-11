@@ -4,7 +4,7 @@
  * colunas, índices, restrições, enums e extensões
  * (docs/migracao-site-build-labs.md, parte "Banco").
  *
- *   npx tsx scripts/banco/conferir.ts --origem <arquivo> --destino <arquivo> [--json saida.json]
+ *   npx tsx scripts/banco/conferir.ts --origem <arquivo> --destino <arquivo> [--ca <ca-cert do destino>] [--json saida.json]
  *
  * Sai com código 1 se houver diferença. Serve depois da cópia, antes da
  * virada, e de novo no dia seguinte (o destino deve ter só linhas a mais,
@@ -13,14 +13,14 @@
 import { writeFileSync } from "node:fs";
 import pg from "pg";
 import { poolConfigDe } from "../../src/lib/pg-config";
-import { hostDe, lerUrl } from "./copiar";
+import { hostDe, lerCa, lerUrl } from "./copiar";
 import { comparar, fotografar } from "./foto";
 
-async function principal(argumentos: string[]) {
+export async function principal(argumentos: string[]) {
   const urls = { origem: lerUrl(argumentos, "--origem"), destino: lerUrl(argumentos, "--destino") };
   const fotos = await Promise.all(
-    Object.values(urls).map(async (url) => {
-      const c = new pg.Client(poolConfigDe(url));
+    Object.entries(urls).map(async ([lado, url]) => {
+      const c = new pg.Client(poolConfigDe(url, { ca: lado === "destino" ? lerCa(argumentos) : undefined }));
       await c.connect();
       try {
         return await fotografar(c);

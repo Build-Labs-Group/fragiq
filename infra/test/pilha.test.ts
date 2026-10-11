@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { App } from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
 import { describe, expect, it } from "vitest";
-import { CONTA, LAYER_DO_ADAPTADOR, lerAmbiente, REGIAO } from "../lib/ambiente.ts";
+import { CONTA, LAYER_DO_ADAPTADOR, lerAmbiente, REDE_DE_BANCOS, REGIAO } from "../lib/ambiente.ts";
 import { SiteStack } from "../lib/site-stack.ts";
 
 /** Um pacote de mentira no lugar de `.aws/site`: o teste não depende do `next build`. */
@@ -16,8 +16,8 @@ function pacoteFalso() {
   return pasta;
 }
 
-function sintetizar(virada: boolean) {
-  const ambiente = lerAmbiente("prod", virada);
+function sintetizar(virada: boolean, rede?: boolean) {
+  const ambiente = lerAmbiente("prod", virada, rede);
   const app = new App();
   const pilha = new SiteStack(app, ambiente.pilha, {
     env: { account: CONTA, region: REGIAO },
@@ -28,8 +28,10 @@ function sintetizar(virada: boolean) {
 }
 
 // Sintetizar empacota as Lambdas com esbuild: uma vez por estado basta.
-const antes = sintetizar(false);
+// `antes`: antes da virada do site e fora da VPC. `depois`: o que a produção publica hoje (padrões).
+const antes = sintetizar(false, false);
 const depois = sintetizar(true);
+const naRede = depois.t;
 
 const politicas = (t: Template) => JSON.stringify(t.findResources("AWS::IAM::Policy"));
 
@@ -179,5 +181,53 @@ describe("migrações e agenda", () => {
 
   it("logs com retenção de um mês", () => {
     antes.t.hasResourceProperties("AWS::Logs::LogGroup", { LogGroupName: "/aws/lambda/fragiq-site", RetentionInDays: 30 });
+  });
+});
+
+describe("rede dos bancos (InfraBancos)", () => {
+  const funcoes = (t: Template) => t.findResources("AWS::Lambda::Function");
+  const nomeDe = (f: { [chave: string]: any }): string | undefined => f.Properties.FunctionName;
+
+  it("produção publica com a rede ligada (o banco do site é o Postgres da Build Labs)", () => {
+    expect(REDE_DE_BANCOS).toBe(true);
+    expect(depois.ambiente.redeDeBancos).toBe(true);
+  });
+
+  it("desligada: nenhuma Lambda entra em VPC e a pilha não importa nada de infra-bancos", () => {
+    for (const f of Object.values(funcoes(antes.t))) expect(f.Properties.VpcConfig).toBeUndefined();
+    expect(JSON.stringify(antes.t.toJSON())).not.toContain("infra-bancos");
+  });
+
+  it("ligada: só o site e as migrações entram na VPC, com as subnets e o grupo exportados pela pilha dos bancos", () => {
+    const emVpc = Object.values(funcoes(naRede))
+      .filter((f) => f.Properties.VpcConfig)
+      .map(nomeDe)
+      .sort();
+    expect(emVpc).toEqual(["fragiq-migracoes", "fragiq-site"]);
+    const texto = JSON.stringify(naRede.toJSON());
+    for (const nome of ["infra-bancos-lambda-subnet-ids", "infra-bancos-lambda-sg-id"]) {
+      expect(texto).toContain(nome);
+    }
+  });
+
+  it("ligada: o pool do site é pequeno e a Lambda de migração continua sem segredo no ambiente", () => {
+    naRede.hasResourceProperties("AWS::Lambda::Function", {
+      FunctionName: "fragiq-site",
+      Environment: { Variables: Match.objectLike({ DATABASE_POOL_MAX: "5" }) },
+    });
+    const migracoes = Object.values(funcoes(naRede)).find((f) => nomeDe(f) === "fragiq-migracoes")!;
+    expect(Object.keys(migracoes.Properties.Environment.Variables)).toEqual(["FRAGIQ_SECRET_PARAM"]);
+  });
+
+  it("ligada: as roles do site e das migrações ganham a política de ENI da VPC", () => {
+    const papeis = JSON.stringify(naRede.findResources("AWS::IAM::Role"));
+    expect(papeis.match(/AWSLambdaVPCAccessExecutionRole/g)?.length).toBe(2);
+  });
+
+  it("ligada: a agenda e a Cloudflare ficam fora da VPC (não falam com o banco)", () => {
+    for (const f of Object.values(funcoes(naRede))) {
+      const nome = nomeDe(f);
+      if (nome === "fragiq-agenda" || nome?.startsWith("fragiq-cloudflare")) expect(f.Properties.VpcConfig).toBeUndefined();
+    }
   });
 });

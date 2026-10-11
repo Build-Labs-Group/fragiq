@@ -30,6 +30,13 @@ function bancoFalso(linhas: Record<string, unknown>[] = [], falharEm?: string) {
 const sem = () => {};
 
 describe("migrações (compatíveis com o prisma migrate deploy)", () => {
+  it("atrás do pgbouncer (travar: false) não pede nem solta a trava de sessão", async () => {
+    const { cliente, executados } = bancoFalso();
+    await migrar(cliente, [{ nome: "20260920000000_a", sql: "CREATE TABLE b();" }], sem, { travar: false });
+    expect(executados.some((q) => q.includes("pg_advisory"))).toBe(false);
+    expect(executados).toContain("CREATE TABLE b();");
+  });
+
   it("aplica só as pendentes, em ordem, com o lock do Prisma e o registro completo", async () => {
     const { cliente, executados, tabela } = bancoFalso([
       { migration_name: "20260901000000_init", finished_at: new Date(), rolled_back_at: null },

@@ -8,7 +8,10 @@
  * (`prisma/migrations/<nome>/migration.sql`), e o `migrate deploy` só faz isto:
  *
  *   1. trava com `pg_advisory_lock(72707369)`, a mesma chave do Prisma, para
- *      duas execuções (esta e um `prisma migrate deploy` à mão) não correrem juntas;
+ *      duas execuções (esta e um `prisma migrate deploy` à mão) não correrem juntas.
+ *      Só com conexão direta: atrás do pgbouncer em modo transaction (o único
+ *      caminho das Lambdas até o Postgres da Build Labs) a trava de sessão
+ *      ficaria numa conexão e o destrave sairia noutra, então `travar: false`;
  *   2. recusa seguir se há migração começada e não terminada (o P3009 do Prisma);
  *   3. aplica, em ordem, cada pasta que não está em `_prisma_migrations`, e
  *      registra nome, checksum (SHA-256 do SQL), início, fim e passos.
@@ -50,12 +53,19 @@ const CRIAR_TABELA = `CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
   "applied_steps_count" INTEGER NOT NULL DEFAULT 0
 )`;
 
+export interface OpcoesDaMigracao {
+  /** Trava de sessão do Prisma. Desligue só atrás de pooler em modo transaction. Padrão: ligada. */
+  travar?: boolean;
+}
+
 export async function migrar(
   cliente: ClienteSql,
   migracoes: Migracao[],
   log: (mensagem: string) => void = console.log,
+  opcoes: OpcoesDaMigracao = {},
 ): Promise<ResultadoDasMigracoes> {
-  await cliente.query("SELECT pg_advisory_lock($1)", [CHAVE_DO_LOCK]);
+  const travar = opcoes.travar ?? true;
+  if (travar) await cliente.query("SELECT pg_advisory_lock($1)", [CHAVE_DO_LOCK]);
   try {
     await cliente.query(CRIAR_TABELA);
     const { rows } = await cliente.query(
@@ -95,6 +105,6 @@ export async function migrar(
     log(`[migracoes] ${aplicadas.length} aplicadas, ${feitas.size} já estavam`);
     return { aplicadas, jaEstavam: feitas.size };
   } finally {
-    await cliente.query("SELECT pg_advisory_unlock($1)", [CHAVE_DO_LOCK]);
+    if (travar) await cliente.query("SELECT pg_advisory_unlock($1)", [CHAVE_DO_LOCK]);
   }
 }
