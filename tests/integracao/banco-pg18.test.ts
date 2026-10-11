@@ -169,6 +169,24 @@ describe.skipIf(!ADMIN)("banco do FragIQ no Postgres 18", () => {
     }
   }, 60_000);
 
+  it("a fotografia ignora o que o pg_restore muda sem mudar o schema: lacuna de posição de coluna e NOT NULL como restrição do PG18", async () => {
+    const c = new pg.Client({ connectionString: urlDe(BANCOS.b) });
+    const a = new pg.Client({ connectionString: urlDe(BANCOS.a) });
+    await Promise.all([c.connect(), a.connect()]);
+    try {
+      // A: coluna apagada no meio deixa buraco no ordinal_position (como no Neon antigo); B: restaurada sem o buraco.
+      await a.query(`ALTER TABLE users ADD COLUMN lixo int; ALTER TABLE users ADD COLUMN extra_it text; ALTER TABLE users DROP COLUMN lixo`);
+      await c.query(`ALTER TABLE users ADD COLUMN extra_it text`);
+      const fa = await fotografar(a);
+      const fc = await fotografar(c);
+      expect(comparar(fa, fc)).toEqual([]);
+      expect(fa.restricoes.some((r) => r.includes("NOT NULL"))).toBe(false);
+      await Promise.all([a.query(`ALTER TABLE users DROP COLUMN extra_it`), c.query(`ALTER TABLE users DROP COLUMN extra_it`)]);
+    } finally {
+      await Promise.all([c.end(), a.end()]);
+    }
+  }, 60_000);
+
   it("a fotografia (linhas + md5 por tabela) acusa uma linha alterada no destino", async () => {
     const c = new pg.Client({ connectionString: urlDe(BANCOS.b) });
     const a = new pg.Client({ connectionString: urlDe(BANCOS.a) });

@@ -132,6 +132,17 @@ apagadas, com todas as versões, no fim.
 do momento do dump (nada gravou lá depois); alarmes `fragiq-*` em OK; logs
 sem ERROR.
 
+### Ensaio de 11/10 (banco `fragiq_ensaio` no servidor, apagável)
+
+Dump do Neon (7,1 MB) restaurado em 4 s. Dados: contagem e checksum iguais em
+todas as tabelas. A conferência acusou só falsos positivos de **versão** (Neon
+17 x servidor 18), já corrigidos em `scripts/banco/foto.ts`: o PG18 lista
+cada NOT NULL como restrição (218 a mais; a nulidade já é comparada nas
+colunas) e o restore renumera as colunas sem os buracos de colunas apagadas
+(a posição agora é a ordem relativa). Coberto por teste em
+`tests/integracao/banco-pg18.test.ts`. Falta repetir o ensaio com o
+`conferir` corrigido: tem que dar zero diferença.
+
 ## 5. Volta
 
 Enquanto o Neon estiver intacto (30 dias, sem escrita):

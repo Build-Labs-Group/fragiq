@@ -79,7 +79,8 @@ export async function fotografar(c: ClienteSql): Promise<Foto> {
     `SELECT tablename AS tabela FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
   );
   const { rows: colunas } = await c.query<{ tabela: string; coluna: string; tipo: string; posicao: number; nulo: string; padrao: string | null }>(
-    `SELECT table_name AS tabela, column_name AS coluna, data_type AS tipo, ordinal_position AS posicao,
+    `SELECT table_name AS tabela, column_name AS coluna, data_type AS tipo,
+            row_number() OVER (PARTITION BY table_name ORDER BY ordinal_position) AS posicao,
             is_nullable AS nulo, column_default AS padrao
        FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position`,
   );
@@ -112,7 +113,7 @@ export async function fotografar(c: ClienteSql): Promise<Foto> {
   foto.restricoes = (
     await c.query<{ d: string }>(
       `SELECT conrelid::regclass::text || ' ' || conname || ' ' || pg_get_constraintdef(oid) AS d
-         FROM pg_constraint WHERE connamespace = 'public'::regnamespace ORDER BY 1`,
+         FROM pg_constraint WHERE connamespace = 'public'::regnamespace AND contype <> 'n' ORDER BY 1`,
     )
   ).rows.map((r) => r.d);
   for (const r of (
