@@ -4,9 +4,14 @@
 > os segredos vêm do SSM `/fragiq/prod/site` (SecureString, ADR 0005), lidos
 > pela role da própria Lambda: `FRAGIQ_SECRET_PARAM`, que tem prioridade
 > sobre `FRAGIQ_SECRET_ID`. Na AWS o JSON leva também `DATABASE_URL`,
-> `DIRECT_DATABASE_URL`, `CRON_SECRET` e a configuração, carregados no boot
-> (`aws/iniciar.mjs`). O caminho abaixo (Secrets Manager por OIDC) vale para
-> a Vercel até a virada. Plano e desligamento: `docs/migracao-site-build-labs.md`.
+> `CRON_SECRET` e a configuração, carregados no boot (`aws/iniciar.mjs`).
+> Com o banco no Postgres da Build Labs (docs/migracao-banco-aws.md), a
+> `DATABASE_URL` é a do pgbouncer (`/bancos/prod/fragiq/database-url`), entra
+> `DATABASE_SSL_CA` (o certificado público de `/bancos/prod/tls/ca-cert`) e
+> sai `DIRECT_DATABASE_URL` (a Lambda não alcança a porta direta). Depois de
+> trocar o parâmetro: `node scripts/aws/reler-parametro.mjs`. O caminho abaixo
+> (Secrets Manager por OIDC) era o da Vercel, já desligada. Plano e
+> desligamento: `docs/migracao-site-build-labs.md`.
 
 Decisão de 13/09/2026: os segredos do FragIQ moram no Secrets Manager, num
 segredo só do tenant, e a Vercel chega nele por OIDC — sem chave AWS
