@@ -1,5 +1,6 @@
+import type { PeerCertificate } from "node:tls";
 import { describe, expect, it } from "vitest";
-import { opcoesDoAmbiente, poolConfigDe } from "@/lib/pg-config";
+import { identidadeDe, opcoesDoAmbiente, poolConfigDe } from "@/lib/pg-config";
 import { SUPABASE_ROOT_CA } from "@/lib/supabase-ca";
 
 const CA_FALSA = "-----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----\n";
@@ -27,7 +28,19 @@ describe("poolConfigDe", () => {
       ca: CA_FALSA,
     });
     expect(c.connectionString).toBe("postgresql://fragiq:s@10.42.2.10:6432/fragiq?pgbouncer=true");
-    expect(c.ssl).toEqual({ ca: CA_FALSA.trim(), rejectUnauthorized: true });
+    expect(c.ssl).toMatchObject({ ca: CA_FALSA.trim(), rejectUnauthorized: true });
+    // Com host IP o pg não passa servername: sem esta função o Node compara com "localhost".
+    expect(typeof (c.ssl as { checkServerIdentity?: unknown }).checkServerIdentity).toBe("function");
+  });
+
+  it("a identidade do servidor é conferida contra o host da URL, inclusive IP (o servidor da Build Labs)", () => {
+    const cert = (san: string) => ({ subject: { CN: "bancos" }, subjectaltname: san }) as unknown as PeerCertificate;
+    const doServidor = cert("IP Address:10.42.2.10, DNS:bancos.internal");
+    expect(identidadeDe("postgresql://fragiq:s@10.42.2.10:6432/fragiq?pgbouncer=true")("", doServidor)).toBeUndefined();
+    expect(identidadeDe("postgresql://fragiq:s@bancos.internal:6432/fragiq")("", doServidor)).toBeUndefined();
+    // O servername vazio (ou "localhost") não importa: vale o host da URL.
+    expect(identidadeDe("postgresql://fragiq:s@10.42.2.11:6432/fragiq")("localhost", doServidor)).toBeInstanceOf(Error);
+    expect(identidadeDe("postgresql://fragiq:s@10.42.2.10:6432/fragiq")("", cert("IP Address:10.42.2.99"))).toBeInstanceOf(Error);
   });
 
   it("a CA só vale para URL com SSL (Postgres local continua sem)", () => {

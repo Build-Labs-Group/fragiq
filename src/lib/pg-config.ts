@@ -1,3 +1,4 @@
+import { checkServerIdentity, type PeerCertificate } from "node:tls";
 import type { PoolConfig } from "pg";
 import { SUPABASE_ROOT_CA } from "./supabase-ca";
 
@@ -29,6 +30,11 @@ export interface OpcoesDoPool {
  * verificação continua completa, só que contra a raiz deles. O servidor
  * Postgres da Build Labs (InfraBancos) é igual: com `opcoes.ca`, a
  * verificação completa é contra a CA da empresa.
+ *
+ * O servidor da Build Labs é endereçado por IP (`10.42.2.10`), e com IP o
+ * `pg` não passa `servername` ao TLS: o Node compararia o certificado com
+ * "localhost" e recusaria (achado no ensaio da virada, 11/10/2026). Por isso
+ * a identidade é conferida contra o host da própria URL (`identidadeDe`).
  */
 export function poolConfigDe(url: string, opcoes: OpcoesDoPool = {}): PoolConfig {
   const max = opcoes.max && opcoes.max > 0 ? { max: opcoes.max } : {};
@@ -38,9 +44,23 @@ export function poolConfigDe(url: string, opcoes: OpcoesDoPool = {}): PoolConfig
   }
   const ca = opcoes.ca?.trim();
   if (ca && /[?&]sslmode=(require|prefer|verify-ca|verify-full)\b/.test(url)) {
-    return { connectionString: semSslmode(), ssl: { ca, rejectUnauthorized: true }, ...max };
+    return {
+      connectionString: semSslmode(),
+      ssl: { ca, rejectUnauthorized: true, checkServerIdentity: identidadeDe(url) },
+      ...max,
+    };
   }
   return { connectionString: url.replace(/([?&])sslmode=(require|prefer|verify-ca)\b/, "$1sslmode=verify-full"), ...max };
+}
+
+/**
+ * Confere o certificado do servidor contra o host da URL (nome ou IP, como o
+ * `verify-full` da libpq), e não contra o `servername` do TLS, que o `pg`
+ * deixa vazio quando o host é IP.
+ */
+export function identidadeDe(url: string): (servername: string, cert: PeerCertificate) => Error | undefined {
+  const host = new URL(url).hostname.replace(/^\[(.*)\]$/, "$1");
+  return (_servername, cert) => checkServerIdentity(host, cert);
 }
 
 /** As opções que o processo recebe do ambiente (o `aws/iniciar.mjs` copia o parâmetro do site para ele). */
