@@ -4,12 +4,12 @@ titulo: Classe .hud fora de camada vence cor e tamanho do Tailwind (selo "beta" 
 projeto: fragiq
 tipo: ux
 prioridade: P2
-status: pronto
+status: feito
 esforco: P
 area: src/app/globals.css (.hud)
 criado_por: dev
 criado_em: 2026-10-01
-atualizado_em: 2026-10-01
+atualizado_em: 2026-10-13
 commits: []
 relacionados: [FQ-0002]
 ---
@@ -28,11 +28,11 @@ mediu como `#7c8695`, não laranja. São 10 combinações `hud` + `text-<cor>` e
   `#7c8695` sobre `#f2eae8`, apesar do `text-accent`.
 
 ## Critérios de aceite
-- [ ] Dado o selo "beta" da home, então ele sai na cor `--accent`.
-- [ ] Dado um `hud` sem cor explícita, então continua em `--ink-faint` 11px.
-- [ ] A correção é mover `.hud` (e as outras classes próprias, se fizer
+- [x] Dado o selo "beta" da home, então ele sai na cor `--accent`.
+- [x] Dado um `hud` sem cor explícita, então continua em `--ink-faint` 11px.
+- [x] A correção é mover `.hud` (e as outras classes próprias, se fizer
       sentido) para `@layer components`, não `!important` página a página.
-- [ ] Conferir as 10 combinações: alguma pode ter sido escrita contando com
+- [x] Conferir as 10 combinações: alguma pode ter sido escrita contando com
       o cinza; nessa, tirar a cor do `className` em vez de mudar a tela.
 
 ## Notas técnicas
@@ -44,4 +44,16 @@ Ao virar laranja, o "beta" de 10px sobre o cabeçalho precisa de 4,5:1: com o
 Achado ao fazer o FQ-0002; fora do escopo dele, então virou item próprio.
 
 ## Entrega
-(preenchido pelos devs)
+- **Resumo:** `.hud` passou para `@layer components` em `src/app/globals.css`;
+  os utilitários do Tailwind (`@layer utilities`) agora vencem. O selo "beta"
+  da home sai em `--accent`; `hud` sem cor continua `--ink-faint` a 11px.
+- **As combinações conferidas** (todas escritas pedindo a cor ou o tamanho, nenhuma
+  contava com o cinza, então nenhuma tela foi mexida): `text-accent` em "beta"
+  (home), "vs" (comparação), "próxima" (analista), "demo", "próximo" e
+  "Primeiros passos concluídos", chip do bot amigo e selos Fundador/Dev;
+  `text-[10px]` nos rótulos de cartão (de 11px para os 10px pedidos);
+  `text-xs` na linha de Sessões (12px). Efeito colateral bom: o
+  `hover:text-ink` do link do quadro, que nunca funcionou, passa a funcionar.
+- **Teste:** `tests/app/hud-camada.test.ts` (falha na CSS antiga, 3 casos) e
+  `steam` entrou na conta de contraste de `tests/app/contraste-tokens.test.ts`
+  (o selo Dev passa a sair azul, 10px).

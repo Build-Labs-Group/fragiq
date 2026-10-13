@@ -71,7 +71,7 @@ Regra dura: **`--accent` nunca codifica valência.** Subiu/caiu é
 
 | Classe | O que é |
 |---|---|
-| `.hud` | 11px mono, caixa alta, tracking `0.12em`, `--ink-faint`. Rótulo de cartão, cabeçalho de tabela, título de seção |
+| `.hud` | 11px mono, caixa alta, tracking `0.12em`, `--ink-faint`. Rótulo de cartão, cabeçalho de tabela, título de seção. Mora em `@layer components`: `text-accent` e `text-[10px]` no mesmo elemento valem (FQ-0004) |
 | `.num` | mono, tabular, tracking `-0.02em`. Todo número grande |
 | `.tnum` | só `tabular-nums`. Números em texto corrido e em células |
 | `.glow` | anel + brilho do acento. **Um por tela**: é o hero |

@@ -35,7 +35,8 @@ function razao(a: string, b: string): number {
 
 /** Texto pequeno (o `.hud` tem 11px), então vale o mínimo de 4,5:1. */
 const MINIMO = 4.5;
-const TEXTOS = ["ink", "ink-muted", "ink-faint", "accent"];
+// `steam` entra com o FQ-0004: o selo "Dev" (`hud text-steam`, 10px) passa a sair azul.
+const TEXTOS = ["ink", "ink-muted", "ink-faint", "accent", "steam"];
 const FUNDOS = ["canvas", "surface", "surface-2", "accent-soft"];
 
 /** Fundo do cabeçalho translúcido da home sobre o brilho do hero, como o axe mediu em produção. */
