@@ -152,13 +152,20 @@ body {
 }
 
 /* Rótulo de HUD: maiúsculas pequenas em mono, espaçadas. É o que identifica
-   um número como instrumento e não como texto corrido. */
-.hud {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
+   um número como instrumento e não como texto corrido.
+
+   Fica em `@layer components`: CSS sem camada sempre vence o que está em
+   camada, e os utilitários do Tailwind 4 (`text-accent`, `text-[10px]`,
+   `hover:text-ink`) ficam em `@layer utilities`. Sem a camada, a cor e o
+   tamanho da `.hud` ganhavam de qualquer utilitário (FQ-0004). */
+@layer components {
+  .hud {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
 }
 
 /* Números grandes em mono: largura fixa, leitura de painel. */
