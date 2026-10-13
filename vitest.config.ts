@@ -12,6 +12,10 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",
+    // O primeiro `import()` de uma rota (Prisma gerado, zod, Next) leva
+    // mais de 5 s no Windows com a suíte inteira rodando em paralelo; sem
+    // folga, o teste caía por tempo e o seguinte herdava os mocks dele.
+    testTimeout: 20_000,
   },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },

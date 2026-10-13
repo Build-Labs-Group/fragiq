@@ -312,7 +312,9 @@ libera os CDNs de imagem da Steam, o Vercel Analytics/Speed Insights e o
 beacon do Web Analytics que o Cloudflare injeta na página, e tem
 `'unsafe-inline'` em `script-src` porque a página não tem nonce. O próximo
 passo é promovê-la a `Content-Security-Policy` depois de um período sem
-avisos. `tests/app/cabecalhos-seguranca.test.ts` quebra se algum cabeçalho
+avisos. Os avisos chegam a `/api/csp-report` e viram linhas `[csp]` no log da
+Lambda (como ler e quando promover: `docs/seguranca-csp.md`).
+`tests/app/cabecalhos-seguranca.test.ts` quebra se algum cabeçalho
 sumir. Imagem de um host novo pede a exceção em `img-src` antes.
 
 ## Limites desta camada de dados

@@ -8,6 +8,11 @@ const emDesenvolvimento = process.env.NODE_ENV === "development";
  * `'unsafe-inline'` até a página ganhar nonce; o próximo passo é observar o
  * console em produção e então promover para `Content-Security-Policy`.
  *
+ * As violações chegam a `/api/csp-report` (`report-uri` para quem só conhece
+ * o formato antigo, `report-to` + `Reporting-Endpoints` para o novo) e viram
+ * linhas `[csp]` no log da Lambda; como ler e quando promover:
+ * docs/seguranca-csp.md.
+ *
  * - imagens: avatares, ícones e itens vêm dos CDNs da Steam (`*.steamstatic.com`,
  *   `*.steampowered.com`, `*.akamaihd.net`);
  * - Vercel Analytics e Speed Insights servem do próprio domínio
@@ -26,6 +31,8 @@ const cspReportOnly = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  "report-uri /api/csp-report",
+  "report-to csp-fragiq",
 ].join("; ");
 
 /**
@@ -42,6 +49,7 @@ const cabecalhosDeSeguranca = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
   { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  { key: "Reporting-Endpoints", value: 'csp-fragiq="/api/csp-report"' },
 ];
 
 /**
