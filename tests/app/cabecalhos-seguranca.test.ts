@@ -60,6 +60,14 @@ describe("cabeçalhos de segurança", () => {
     expect(csp["frame-ancestors"]).toBeUndefined();
   });
 
+  it("a Report-Only manda as violações para /api/csp-report, nos dois formatos", async () => {
+    const h = await cabecalhosDe("/");
+    const csp = diretivas(h.get("content-security-policy-report-only") ?? "");
+    expect(csp["report-uri"]).toEqual(["/api/csp-report"]);
+    expect(csp["report-to"]).toEqual(["csp-fragiq"]);
+    expect(h.get("reporting-endpoints")).toBe('csp-fragiq="/api/csp-report"');
+  });
+
   it("não anuncia o framework", () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });
