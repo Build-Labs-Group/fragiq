@@ -594,6 +594,12 @@ leitura e comparação, sem expor nada da curva (que continua do dono):
   perfil público**; o resto é agregado sem nome.
 - **Landing**: os números do topo são os do panorama, ao vivo, e saem do
   servidor já com o valor final (o contador só anima o que está fora da tela).
+- **Busca da landing** (`/api/perfil/buscar`, pública): o apelido da Steam
+  é resolvido uma vez por hora (cache por instância, sem distinguir caixa; o
+  que não existe, 5 min; falha não entra no cache). A mensagem separa os dois
+  casos: "Não achei esse perfil" (a Steam respondeu que não existe) e "Não
+  consegui consultar a Steam agora" (cogniflow ou Steam fora). Teste:
+  `tests/lib/busca-perfil.test.ts`.
 
 ### 4.10 Uma partida — `/partida/[id]`
 

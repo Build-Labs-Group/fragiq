@@ -46,9 +46,38 @@ export function pareceSteamId(v: string) {
   return /^7656119\d{10}$/.test(v);
 }
 
+/** Apelido que existe muda raramente; o que não existe pode ser criado a qualquer hora. */
+const APELIDO_ACHADO_MS = 60 * 60_000;
+const APELIDO_INEXISTENTE_MS = 5 * 60_000;
+const APELIDOS_MAX = 500;
+const apelidos = new Map<string, { expira: number; steamId: string | null }>();
+
+/** Só para os testes. */
+export function zerarApelidos() {
+  apelidos.clear();
+}
+
+/**
+ * Apelido (vanity) → SteamID64, com cache por instância. O campo da home é
+ * público e sem login, e cada consulta é uma chamada ao cogniflow e à Steam:
+ * sem cache, repetir o mesmo apelido (ou um robô) gastava cota e deixava a
+ * busca lenta. Falha **não** entra no cache (a próxima tentativa já tenta de
+ * novo) e é relançada, para a rota saber que não é "perfil inexistente".
+ */
+async function resolverApelido(apelido: string): Promise<string | null> {
+  const chave = apelido.toLowerCase();
+  const hit = apelidos.get(chave);
+  if (hit && Date.now() < hit.expira) return hit.steamId;
+  const steamId = await resolveVanityUrl(apelido);
+  if (apelidos.size >= APELIDOS_MAX) apelidos.clear();
+  apelidos.set(chave, { expira: Date.now() + (steamId ? APELIDO_ACHADO_MS : APELIDO_INEXISTENTE_MS), steamId });
+  return steamId;
+}
+
 /**
  * O que a pessoa colou: SteamID64, link /profiles/<id>, link /id/<apelido>
- * ou só o apelido. Devolve o SteamID64 ou null.
+ * ou só o apelido. Devolve o SteamID64 ou null (não existe). Lança quando a
+ * Steam (via cogniflow) não pôde responder: é falha, não "não achei".
  */
 export async function resolverEntrada(entrada: string): Promise<string | null> {
   const v = entrada.trim();
@@ -58,7 +87,7 @@ export async function resolverEntrada(entrada: string): Promise<string | null> {
   if (m?.[1] === "profiles") return pareceSteamId(m[2]) ? m[2] : null;
   const vanity = m ? m[2] : v;
   if (!/^[A-Za-z0-9_-]{2,32}$/.test(vanity)) return null;
-  return resolveVanityUrl(vanity);
+  return resolverApelido(vanity);
 }
 
 export async function carregarPerfilPublico(steamId: string): Promise<PerfilPublico> {
