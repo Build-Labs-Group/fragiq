@@ -67,7 +67,7 @@ export default async function ConfiguracoesPage() {
     <div className="min-h-dvh">
       <SiteHeader {...user} admin={isAdmin(session.steamId)} selo={selo} passos={passos} />
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Configurações</h1>
         <p className="mt-1 text-sm text-ink-muted">
           O que você liga, desliga ou cola. O que o site faz com os dados está em{" "}

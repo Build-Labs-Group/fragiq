@@ -44,7 +44,7 @@ export default async function AdminPage() {
   return (
     <>
       <SiteHeader {...user} admin />
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <div className="flex items-baseline justify-between">
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Painel</h1>
           <nav className="flex items-center gap-4 text-sm">

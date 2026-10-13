@@ -107,7 +107,7 @@ export default async function GameLayout({
               </Suspense>
             </div>
           </div>
-          <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+          <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
         </>
       ) : (
         children

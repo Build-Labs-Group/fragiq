@@ -124,6 +124,12 @@
   }
 }
 
+/* O alvo do "Pular para o conteúdo" recebe foco por programação; o anel de foco
+   ficaria como uma moldura em volta da página inteira. */
+main:focus {
+  outline: none;
+}
+
 html {
   /* Scrollbars, seletores e inputs nativos seguem o mesmo sinal do sistema. */
   color-scheme: light dark;

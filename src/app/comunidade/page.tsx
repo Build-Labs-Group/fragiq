@@ -65,7 +65,7 @@ export default async function ComunidadePage() {
     .filter((t) => t.participant?.visivel !== false);
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+    <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
       <Link href={session ? "/games/730" : "/"} className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-accent">
         <ArrowLeft className="size-4" /> FragIQ
       </Link>

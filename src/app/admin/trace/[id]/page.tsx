@@ -33,7 +33,7 @@ export default async function TracePage({ params }: { params: Promise<{ id: stri
   ].sort((a, b) => a.em.getTime() - b.em.getTime());
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+    <main id="conteudo" tabIndex={-1} className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <p className="text-xs text-ink-faint"><Link href="/admin" className="hover:underline">Painel</Link> · trace</p>
       <h1 className="mt-1 font-mono text-lg">{id}</h1>
       <p className="mt-1 text-sm text-ink-muted">

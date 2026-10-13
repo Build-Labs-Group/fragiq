@@ -44,7 +44,7 @@ export default async function SegurancaPage() {
         </header>
       )}
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-4xl px-6 py-10">
         <p className="hud">Segurança e dados</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance">
           O que lemos, o que guardamos, o que nunca tocamos.

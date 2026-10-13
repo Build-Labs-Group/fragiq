@@ -179,7 +179,7 @@ export default async function PerfilPublicoPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-6 py-10">
         {perfil.estado === "oculto" && <Estado titulo="Perfil oculto" texto="Esta pessoa escolheu não ter página pública no FragIQ." />}
         {perfil.estado === "inexistente" && <Estado titulo="Perfil não encontrado" texto="A Steam não conhece esse SteamID." />}
         {perfil.estado === "indisponivel" && (
