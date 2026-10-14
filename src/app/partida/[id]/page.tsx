@@ -65,7 +65,7 @@ export default async function PartidaPage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <section className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="hud" suppressHydrationWarning>

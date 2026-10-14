@@ -35,6 +35,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* Primeiro foco da página: quem navega por teclado ou leitor de tela pula o cabeçalho (WCAG 2.4.1). O elemento main de cada tela leva `id="conteudo"`. */}
+        <a
+          href="#conteudo"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-accent focus:ring-2 focus:ring-accent"
+        >
+          Pular para o conteúdo
+        </a>
         {children}
         {/* Os scripts da Vercel só existem na Vercel (`/_vercel/...`); fora dela dariam 404 em toda página. */}
         {process.env.FRAGIQ_ALVO !== "aws" ? (

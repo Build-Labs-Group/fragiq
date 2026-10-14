@@ -64,6 +64,10 @@ Contraste: todo token de texto (`--ink`, `--ink-muted`, `--ink-faint`,
 dos rótulos `.hud` de 11px. `tests/app/contraste-tokens.test.ts` faz a conta
 do WCAG em cima de `globals.css` e quebra se um token novo não alcançar.
 
+Teclado: o primeiro foco de toda página é "Pular para o conteúdo" (layout
+raiz), que leva ao `<main id="conteudo" tabIndex={-1}>` da tela, inclusive
+404 e erro. Um `<main>` novo sem esse id quebra `tests/app/pular-conteudo.test.ts`.
+
 Regra dura: **`--accent` nunca codifica valência.** Subiu/caiu é
 `--good`/`--bad`; laranja é "olhe aqui", não "bom".
 

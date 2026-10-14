@@ -27,7 +27,7 @@ export default async function ComparacaoPage({ params }: { params: Promise<{ ste
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main id="conteudo" tabIndex={-1} className="mx-auto max-w-4xl px-6 py-10">
         {"erro" in c ? (
           <p className="mx-auto max-w-lg py-16 text-center text-sm text-ink-muted">{c.erro}</p>
         ) : (

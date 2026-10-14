@@ -25,7 +25,7 @@ export default async function DadosPage() {
   const atrasados = c.regras.reduce((a, r) => a + r.atrasados, 0) + c.sessoesRegra.atrasadas;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <p className="text-xs text-ink-faint"><Link href="/admin" className="hover:underline">Painel</Link> · Dados · <Link href="/admin/bruto" className="hover:underline">Cru</Link></p>
       <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Dados</h1>
       <p className="mt-1 text-sm text-ink-muted">Cobertura de modo, regras em vigor e o que está atrás delas.</p>

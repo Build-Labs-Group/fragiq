@@ -34,7 +34,7 @@ export default async function Home({
   return (
     <div className="min-h-dvh overflow-x-hidden">
       <TopBar />
-      <main>
+      <main id="conteudo" tabIndex={-1}>
         <Hero erro={erro} />
         <Numeros />
         <Pilares />

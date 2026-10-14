@@ -7,7 +7,7 @@ import { PrimeirosPassos } from "./primeiros-passos";
  */
 export function SemDados({ botAmigo }: { botAmigo: boolean | null }) {
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <main id="conteudo" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
         Ainda não encontramos seu Counter-Strike 2
       </h1>
