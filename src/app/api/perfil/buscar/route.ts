@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { appUrl } from "@/lib/env";
 import { resolverEntrada } from "@/lib/perfil-publico";
 
 export const dynamic = "force-dynamic";
@@ -23,5 +24,7 @@ export async function GET(request: NextRequest) {
     console.warn("[perfil/buscar] a Steam não respondeu:", err instanceof Error ? err.message : err);
   }
   const destino = steamId ? `/p/${steamId}` : `/?erro=${encodeURIComponent(falhou ? STEAM_FORA : NAO_ACHEI)}`;
-  return NextResponse.redirect(new URL(destino, request.url));
+  // `request.url` na Lambda traz o host interno do adaptador (https://localhost:8080):
+  // o redirecionamento sai para o domínio público, como o login e o logout fazem.
+  return NextResponse.redirect(new URL(destino, appUrl()));
 }
