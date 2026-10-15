@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { desvincular, lerPerfilGamersClub, NIVEL_MAX, vincular, vinculoDe } from "@/lib/gamersclub";
+import { desvincular, vincular, vinculoDe } from "@/lib/gamersclub";
+import { lerPerfilGamersClub, NIVEL_MAX } from "@/lib/gamersclub-perfil";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";

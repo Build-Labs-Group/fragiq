@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lerPerfilGamersClub } from "@/lib/gamersclub";
+import { lerPerfilGamersClub } from "@/lib/gamersclub-perfil";
 
 describe("lerPerfilGamersClub", () => {
   it("aceita o número solto, sem zeros à esquerda", () => {
