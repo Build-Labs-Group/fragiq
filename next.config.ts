@@ -23,11 +23,12 @@ const emDesenvolvimento = process.env.NODE_ENV === "development";
  */
 const cspReportOnly = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://static.cloudflareinsights.com${emDesenvolvimento ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com https://static.cloudflareinsights.com https://www.googletagmanager.com${emDesenvolvimento ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.steamstatic.com https://*.steampowered.com https://*.akamaihd.net",
+  "img-src 'self' data: blob: https://*.steamstatic.com https://*.steampowered.com https://*.akamaihd.net https://www.googletagmanager.com https://*.google-analytics.com",
   "font-src 'self' data:",
-  `connect-src 'self' https://va.vercel-scripts.com https://cloudflareinsights.com${emDesenvolvimento ? " ws:" : ""}`,
+  `connect-src 'self' https://va.vercel-scripts.com https://cloudflareinsights.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com${emDesenvolvimento ? " ws:" : ""}`,
+  "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

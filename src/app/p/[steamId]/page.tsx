@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { ArrowRight, Lock } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { listarPartidas } from "@/lib/partidas";
@@ -37,6 +38,17 @@ import { recorteComunidade, recorteDemos, recortePartidas, recorteVitalicio, typ
 import { formatarNumero, getLocale } from "@/lib/formato";
 
 export const dynamic = "force-dynamic";
+
+/** Título e descrição próprios do perfil; a imagem vem de `opengraph-image.tsx`. */
+export async function generateMetadata({ params }: { params: Promise<{ steamId: string }> }): Promise<Metadata> {
+  const id = decodeURIComponent((await params).steamId);
+  const perfil = pareceSteamId(id) ? await carregarPerfilPublico(id).catch(() => null) : null;
+  const nome = perfil && "jogador" in perfil ? perfil.jogador.personaname : null;
+  if (!nome) return {};
+  const titulo = `${nome} no FragIQ — estatísticas de CS2`;
+  const descricao = `Estatísticas de CS2 de ${nome}: números vitalícios, partidas e leituras em português.`;
+  return { title: titulo, description: descricao, openGraph: { title: titulo, description: descricao, url: `/p/${id}` }, alternates: { canonical: `/p/${id}` } };
+}
 
 /**
  * A página pública de um jogador.

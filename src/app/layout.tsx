@@ -4,6 +4,9 @@ import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
+import { GtmHead, GtmNoscript } from "@/components/gtm";
+import { BannerConsentimento } from "@/components/banner-consentimento";
+import { NOME_DO_SITE, urlDoSite } from "@/lib/site";
 
 /**
  * Geist vem do pacote `geist` (next/font/local), não do Google Fonts: o
@@ -13,10 +16,23 @@ import "./globals.css";
 const geistSans = GeistSans;
 const geistMono = GeistMono;
 
+const TITULO = "FragIQ — suas estatísticas de CS2 ao longo do tempo";
+const DESCRICAO =
+  "A Steam guarda só o total acumulado desde sempre. O FragIQ coleta periodicamente e mostra a diferença entre as coletas: 178 estatísticas de CS2 em série temporal, com leituras em português, painel fixo e todos os contadores comparados com o vitalício. Beta aberto.";
+
+/**
+ * Compartilhamento (ADR 0008): `metadataBase` com o domínio de produção faz
+ * og:image, canonical e og:url saírem absolutos, e `canonical: "./"` acompanha
+ * a rota de cada página. As imagens vêm de `opengraph-image`/`twitter-image`
+ * (1200x630); perfil e partida têm a sua, dinâmica.
+ */
 export const metadata: Metadata = {
-  title: "FragIQ — suas estatísticas de CS2 ao longo do tempo",
-  description:
-    "A Steam guarda só o total acumulado desde sempre. O FragIQ coleta periodicamente e mostra a diferença entre as coletas: 178 estatísticas de CS2 em série temporal, com leituras em português, painel fixo e todos os contadores comparados com o vitalício. Beta aberto.",
+  metadataBase: new URL(urlDoSite()),
+  title: TITULO,
+  description: DESCRICAO,
+  alternates: { canonical: "./" },
+  openGraph: { type: "website", siteName: NOME_DO_SITE, locale: "pt_BR", title: TITULO, description: DESCRICAO, url: "./" },
+  twitter: { card: "summary_large_image", title: TITULO, description: DESCRICAO },
 };
 
 /**
@@ -34,7 +50,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <GtmHead />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <GtmNoscript />
         {/* Primeiro foco da página: quem navega por teclado ou leitor de tela pula o cabeçalho (WCAG 2.4.1). O elemento main de cada tela leva `id="conteudo"`. */}
         <a
           href="#conteudo"
@@ -43,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Pular para o conteúdo
         </a>
         {children}
+        <BannerConsentimento />
         {/* Os scripts da Vercel só existem na Vercel (`/_vercel/...`); fora dela dariam 404 em toda página. */}
         {process.env.FRAGIQ_ALVO !== "aws" ? (
           <>
