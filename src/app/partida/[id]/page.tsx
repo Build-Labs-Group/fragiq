@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ArrowRight, Download } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { carregarScoreboard, type Scoreboard } from "@/lib/partidas";
@@ -19,6 +20,17 @@ import { Regua } from "@/components/graficos/regua";
 import { formatarNumero } from "@/lib/formato";
 
 export const dynamic = "force-dynamic";
+
+/** Título e descrição próprios da partida; a imagem vem de `opengraph-image.tsx`. */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const p = await carregarScoreboard(id).catch(() => null);
+  if (!p) return {};
+  const mapa = p.mapa ? rotularMapa(p.mapa) : "CS2";
+  const titulo = `Partida em ${mapa}: ${p.placar[0]} x ${p.placar[1]} — FragIQ`;
+  const descricao = `Placar, scoreboard e leituras da partida de CS2 em ${mapa}.`;
+  return { title: titulo, description: descricao, openGraph: { title: titulo, description: descricao, url: `/partida/${id}` }, alternates: { canonical: `/partida/${id}` } };
+}
 
 /**
  * Uma partida oficial, os dois times.
