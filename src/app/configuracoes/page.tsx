@@ -16,6 +16,8 @@ import { CurvaVisivelToggle } from "@/components/curva-visivel-toggle";
 import { AvisoSteamToggle } from "@/components/aviso-steam-toggle";
 import { PartidasRevogar } from "@/components/partidas-revogar";
 import { AtivarPartidas, PAGINA_STEAM } from "@/components/ativar-partidas";
+import { GamersClubVinculo } from "@/components/gamersclub-vinculo";
+import { vinculoDe } from "@/lib/gamersclub";
 import { shareCodeConhecido } from "@/lib/partidas";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +39,7 @@ export default async function ConfiguracoesPage() {
   const session = await getSession();
   if (!session) redirect("/");
 
-  const [user, selo, amigo, seguidores, temShare, passos] = await Promise.all([
+  const [user, selo, amigo, seguidores, temShare, passos, gc] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: {
@@ -59,6 +61,7 @@ export default async function ConfiguracoesPage() {
     prisma.follow.count({ where: { seguidoId: session.userId } }),
     shareCodeConhecido(session.userId, session.steamId).then(Boolean),
     progressoDosPrimeirosPassos(session.userId),
+    vinculoDe(session.userId),
   ]);
   if (!user) redirect("/");
   const ativo = Boolean(user.partidasAtivadasEm);
@@ -137,6 +140,15 @@ export default async function ConfiguracoesPage() {
               Ver as partidas
             </Link>
           </p>
+        </Secao>
+
+        <Secao
+          titulo="Gamers Club"
+          sub="A Gamers Club não tem API nem login para terceiros, e os termos dela não deixam o FragIQ ler o site. Aqui vale o que você informa; nada é buscado lá."
+        >
+          <GamersClubVinculo
+            inicial={gc ? { gcPlayerId: gc.gcPlayerId, nivel: gc.nivel, informadoEm: gc.informadoEm.toISOString() } : null}
+          />
         </Secao>
 
         <Secao titulo="Bot de presença" sub="É ele que sabe o modo e o mapa de cada partida — sem ele, a sessão fica sem contexto.">

@@ -84,6 +84,7 @@ model User {
   feedback    Feedback[]
   analyses    Analysis[]
   participant Participant?
+  gamersClub  ContaGamersClub?
   seguindo    Follow[]        @relation("seguidor")
   seguidores  Follow[]        @relation("seguido")
   mensagens   SteamMessage[]
@@ -1075,4 +1076,34 @@ enum BotLogLevel {
   INFO
   WARN
   ERROR
+}
+
+/// O vínculo da pessoa com a Gamers Club, declarado por ela.
+///
+/// A Gamers Club não tem API nem OAuth públicos e os termos de uso proíbem
+/// reproduzir o conteúdo sem autorização escrita (docs/gamersclub.md): nada
+/// aqui é lido do site deles. `fonte` diz de onde veio cada valor e
+/// `verificada` só vira verdadeiro por um canal autorizado, que ainda não
+/// existe. Uma linha por usuário; sai em cascata com a conta.
+model ContaGamersClub {
+  id String @id @default(cuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// O número do /player/<id> da Gamers Club.
+  gcPlayerId String
+  /// O nível que a pessoa disse ter. Nulo = não informado.
+  nivel      Int?
+
+  /// "USUARIO" (digitado pela pessoa) hoje; um canal autorizado ganharia o
+  /// próprio valor, sem misturar os dois.
+  fonte       String   @default("USUARIO")
+  verificada  Boolean  @default(false)
+  /// Quando a pessoa informou (ou corrigiu) estes valores.
+  informadoEm DateTime @default(now())
+  vinculadaEm DateTime @default(now())
+
+  @@index([gcPlayerId])
+  @@map("contas_gamersclub")
 }
