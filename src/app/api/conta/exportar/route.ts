@@ -16,6 +16,7 @@ export async function GET() {
       analyses: { orderBy: { createdAt: "asc" } },
       feedback: true,
       participant: true,
+      gamersClub: true,
       seguindo: { select: { seguidoId: true, createdAt: true } },
       seguidores: { select: { seguidorId: true, createdAt: true } },
       syncRuns: { orderBy: { startedAt: "asc" } },
