@@ -4,6 +4,8 @@ Pedido (15/10/2026): login e extração de dados com a Gamers Club (GC).
 Este documento diz o que a investigação achou, o que foi feito e o que
 depende de uma autorização que só a Build Labs pode pedir à GC.
 
+> **16/10/2026: o vínculo declarado foi removido do código** (rota, tela, lib e testes). Sem dado da GC que se possa obter de forma legítima, um campo digitado pela pessoa não vale o custo. Ficam a tabela vazia `contas_gamersclub` e o modelo no `schema.prisma` (a migração já foi aplicada; apagar exige migração destrutiva, só com ok do Murilo). A seção "O que foi feito" abaixo descreve o que existiu.
+
 ## O que é viável (investigado em 15/10/2026)
 
 | Pergunta | Resposta |
